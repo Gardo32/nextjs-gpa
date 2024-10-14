@@ -1,25 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { presets } from '@/lib/presets'
-import { supabase } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
+import { useToast } from '@/components/ui/use-toast'
 
 export default function GPACalculator() {
   const [numSubjects, setNumSubjects] = useState(1)
   const [subjects, setSubjects] = useState([{ name: '', marks: '', hours: '' }])
   const [gpa, setGPA] = useState('N/A')
   const [selectedPreset, setSelectedPreset] = useState('')
-  const router = useRouter()
-
-  useEffect(() => {
-    setSubjects(Array(numSubjects).fill({ name: '', marks: '', hours: '' }))
-  }, [numSubjects])
+  const { toast } = useToast()
 
   const loadPreset = (presetName: string) => {
     setSelectedPreset(presetName)
@@ -50,18 +45,17 @@ export default function GPACalculator() {
 
     const calculatedGPA = totalHours > 0 ? (totalMarks / totalHours) : 0
     setGPA(calculatedGPA.toFixed(2))
-  }
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
+    toast({
+      title: "Success",
+      description: "Your GPA has been calculated.",
+    })
   }
 
   return (
     <Card className="w-full max-w-2xl">
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader>
         <CardTitle className="text-3xl font-bold">GPA Calculator</CardTitle>
-        <Button onClick={handleSignOut} variant="outline">Sign Out</Button>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
