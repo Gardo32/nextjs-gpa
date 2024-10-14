@@ -3,40 +3,26 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import GPACalculator from '@/components/GPACalculator'
-import { supabase } from '@/lib/supabase'
 
 export default function Dashboard() {
-  const [session, setSession] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [session, setSession] = useState(true) // Assuming user is always logged in for this case
+  const [loading, setLoading] = useState(false) // No need to load session from Supabase
   const router = useRouter()
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setLoading(false)
-      if (!session) {
-        router.push('/')
-      }
-    })
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-      if (!session) {
-        router.push('/')
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [router])
+    // Simulate a session check (this can be replaced with other auth logic if needed)
+    setLoading(false)
+    if (!session) {
+      router.push('/')
+    }
+  }, [router, session])
 
   if (loading) {
     return <div>Loading...</div>
   }
 
   if (!session) {
-    return null // This will prevent any flash of content before redirect
+    return null // Prevent content flash before redirect
   }
 
   return (
