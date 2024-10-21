@@ -12,7 +12,7 @@ export default function Home() {
           <TabsTrigger value="gpa">GPA Calculator</TabsTrigger>
           <Link href="https://nasservocational-my.sharepoint.com/:x:/g/personal/mussab_aswad_nvtc_edu_bh/EfVGxHZP6J5Jia0sHIsd0SwBTKKbDtEq4r4SFJ4tullmmA?e=dx9kpT&nav=MTVfe0M2RjJFMEQ4LUI2NTMtMEI0MC1CMDExLTVFRUJDNzYwRjMxQX0" passHref legacyBehavior>
             <TabsTrigger value="resources" asChild>
-              <a>Resources</a>
+              <a>Exams</a>
             </TabsTrigger>
           </Link>
         </TabsList>

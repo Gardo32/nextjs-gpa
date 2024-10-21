@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { chosenPresetVariable } from './GPACalculator'
 
 const timetables = {
-    0: {
+    1: {
       label: '12.AI',
       schedules: {
         0: [ // Sunday
@@ -67,7 +67,7 @@ const timetables = {
     ]
       }
     },
-    1: {
+    0: {
       label: '12.CCP',
       schedules: {
         0: [ // Sunday
