@@ -8,8 +8,8 @@ import { Toaster } from "@/components/ui/toaster"
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'GPA Calculator',
-  description: 'Calculate your GPA with ease',
+  title: 'Grade 12 Utils',
+  description: 'utilities for nvtc grade 12 IT students',
 }
 
 export default function RootLayout({
