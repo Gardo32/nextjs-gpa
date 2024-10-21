@@ -28,7 +28,7 @@ export default function RootLayout({
         >
           <div className="flex flex-col min-h-screen">
             <header className="container mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-              <h1 className="text-2xl font-bold">G12 Hub</h1>
+              <h1 className="text-2xl font-bold">G12 Utils</h1>
               <ModeToggle />
             </header>
             <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
