@@ -1,34 +1,22 @@
-'use client'
-import { useState } from 'react';
-import { ChevronDown, ChevronUp } from "lucide-react";
-import GPACalculator from '@/components/GPACalculator';
-import Timetable from '@/components/Timetable';
-
-const Expandable = ({ title, children }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  return (
-    <div>
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center justify-between w-full"
-      >
-        <span>{title}</span>
-        {isExpanded ? <ChevronUp /> : <ChevronDown />}
-      </button>
-      {isExpanded && (
-        <div>
-          {children}
-        </div>
-      )}
-    </div>
-  );
-};
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import GPACalculator from '@/components/GPACalculator'
+import Timetable from '@/components/Timetable'
 
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <Timetable />
-      <GPACalculator />
-    </main>
-  );
+    <div className="w-full max-w-4xl mx-auto">
+      <Tabs defaultValue="timetable" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="timetable">Timetable</TabsTrigger>
+          <TabsTrigger value="gpa">GPA Calculator</TabsTrigger>
+        </TabsList>
+        <TabsContent value="timetable" className="mt-6">
+          <Timetable />
+        </TabsContent>
+        <TabsContent value="gpa" className="mt-6">
+          <GPACalculator />
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
 }
