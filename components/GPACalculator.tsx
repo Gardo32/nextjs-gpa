@@ -10,28 +10,70 @@ import { presets } from '@/lib/presets'
 import { useToast } from '@/components/ui/use-toast'
 
 export default function GPACalculator() {
-  const [numSubjects, setNumSubjects] = useState(1)
   const [subjects, setSubjects] = useState([{ name: '', marks: '', hours: '' }])
   const [gpa, setGPA] = useState('N/A')
+  const [estimatedGPA, setEstimatedGPA] = useState('N/A') // State for estimated final GPA
   const [selectedPreset, setSelectedPreset] = useState('')
+  const [minError, setMinError] = useState(0) // Minimum error input
+  const [maxError, setMaxError] = useState(0) // Maximum error input
   const { toast } = useToast()
 
   const loadPreset = (presetName: string) => {
     setSelectedPreset(presetName)
     const preset = presets[presetName as keyof typeof presets]
     if (preset) {
-      setNumSubjects(preset.num_subjects)
       setSubjects(preset.subjects.map((name, index) => ({
         name,
         marks: '',
         hours: preset.hours[index].toString()
       })))
+      // Reset min and max error inputs based on preset values if applicable
+      setMinError(0);
+      setMaxError(0);
     }
+  }
+
+  // Function to estimate the final exam mark based on provided range and hours
+  const finalExamMarkEstimation = (start: number, finish: number, hour: number, mark: number): number => {
+    if (start > finish) {
+      throw new Error("Start should be less than or equal to finish.");
+    }
+
+    const weights: number[] = [];
+    for (let i = start; i <= finish; i++) {
+      let weight: number;
+      if (hour > (finish - start) / 2) {
+        weight = 1 / (Math.abs(i - start) + 1);
+      } else {
+        weight = 1 / (Math.abs(finish - i) + 1);
+      }
+      weights.push(weight);
+    }
+
+    const totalWeight = weights.reduce((acc, w) => acc + w, 0);
+    const normalizedWeights = weights.map(w => w / totalWeight);
+    
+    const selectedNumber = weightedRandomChoice(start, finish, normalizedWeights);
+    return mark - selectedNumber;
+  }
+
+  const weightedRandomChoice = (start: number, finish: number, weights: number[]): number => {
+    const randomValue = Math.random();
+    let cumulativeWeight = 0;
+
+    for (let i = start; i <= finish; i++) {
+      cumulativeWeight += weights[i - start]; // Adjust index for weights array
+      if (randomValue < cumulativeWeight) {
+        return i;
+      }
+    }
+    return finish; // Fallback (shouldn't reach here if weights are properly normalized)
   }
 
   const calculateGPA = () => {
     let totalMarks = 0
     let totalHours = 0
+    let estimatedTotalMarks = 0
 
     subjects.forEach(subject => {
       const marks = parseFloat(subject.marks)
@@ -40,11 +82,17 @@ export default function GPACalculator() {
       if (!isNaN(marks) && !isNaN(hours)) {
         totalMarks += marks * hours
         totalHours += hours
+        
+        const estimatedMarks = finalExamMarkEstimation(minError, maxError, hours, marks);
+        estimatedTotalMarks += estimatedMarks * hours
       }
     })
 
     const calculatedGPA = totalHours > 0 ? (totalMarks / totalHours) : 0
+    const estimatedFinalGPA = totalHours > 0 ? (estimatedTotalMarks / totalHours) : 0
+
     setGPA(calculatedGPA.toFixed(2))
+    setEstimatedGPA(estimatedFinalGPA.toFixed(2))
 
     toast({
       title: "Success",
@@ -73,20 +121,25 @@ export default function GPACalculator() {
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="num-subjects">Enter the number of subjects:</Label>
-            <div className="flex space-x-2">
+          <div className="flex space-x-2">
+            <div className="space-y-2 flex-1">
+              <Label htmlFor="min-error">Minimum Error:</Label>
               <Input
                 type="number"
-                id="num-subjects"
-                min="1"
-                value={numSubjects}
-                onChange={(e) => setNumSubjects(parseInt(e.target.value) || 1)}
-                className="flex-grow"
+                id="min-error"
+                value={minError}
+                onChange={(e) => setMinError(parseInt(e.target.value) || 0)}
               />
-              <Button onClick={() => setSubjects(Array(numSubjects).fill({ name: '', marks: '', hours: '' }))}>
-                Update Subjects
-              </Button>
+            </div>
+
+            <div className="space-y-2 flex-1">
+              <Label htmlFor="max-error">Maximum Error:</Label>
+              <Input
+                type="number"
+                id="max-error"
+                value={maxError}
+                onChange={(e) => setMaxError(parseInt(e.target.value) || 0)}
+              />
             </div>
           </div>
 
@@ -97,17 +150,13 @@ export default function GPACalculator() {
                   type="text"
                   placeholder={`Subject ${index + 1}`}
                   value={subject.name}
-                  onChange={(e) => {
-                    const newSubjects = [...subjects]
-                    newSubjects[index] = { ...newSubjects[index], name: e.target.value }
-                    setSubjects(newSubjects)
-                  }}
+                  readOnly // Make the subject name read-only
                 />
                 <Input
                   type="number"
                   placeholder="Marks"
                   min="0"
-                  max="100"
+                  max="100" // Set max value to 100 for marks
                   value={subject.marks}
                   onChange={(e) => {
                     const newSubjects = [...subjects]
@@ -120,11 +169,7 @@ export default function GPACalculator() {
                   placeholder="Hours"
                   min="1"
                   value={subject.hours}
-                  onChange={(e) => {
-                    const newSubjects = [...subjects]
-                    newSubjects[index] = { ...newSubjects[index], hours: e.target.value }
-                    setSubjects(newSubjects)
-                  }}
+                  readOnly // Make the hours read-only based on preset
                 />
               </div>
             ))}
@@ -134,6 +179,9 @@ export default function GPACalculator() {
 
           <div className="text-center text-2xl font-bold">
             Your GPA is: {gpa}
+          </div>
+          <div className="text-center text-xl font-semibold">
+            Estimated Final GPA: {estimatedGPA}
           </div>
         </div>
       </CardContent>
