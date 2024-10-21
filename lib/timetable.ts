@@ -1,5 +1,5 @@
 export const timetables = {
-    0: {
+    1: {
       label: '12.AI',
       schedules: {
         0: [ // Sunday
@@ -57,7 +57,7 @@ export const timetables = {
     ]
       }
     },
-    1: {
+    0: {
       label: '12.CCP',
       schedules: {
         0: [ // Sunday
