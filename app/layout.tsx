@@ -4,6 +4,9 @@ import { Inter } from 'next/font/google'
 import { ThemeProvider } from '@/components/theme-provider'
 import { ModeToggle } from '@/components/mode-toggle'
 import { Toaster } from "@/components/ui/toaster"
+import Link from 'next/link'
+import { Button } from "@/components/ui/button"
+import { BookOpen, GraduationCap, FileSpreadsheet } from 'lucide-react'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -27,9 +30,49 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <div className="flex flex-col min-h-screen">
-            <header className="container mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-              <h1 className="text-2xl font-bold">G12 Utils</h1>
-              <ModeToggle />
+            <header className="container mx-auto py-4 px-4 sm:px-6 lg:px-8">
+              <div className="flex flex-wrap justify-between items-center gap-4">
+                <h1 className="text-2xl font-bold">G12 Utils</h1>
+                <div className="flex items-center space-x-2 sm:space-x-4">
+                  <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+                    <Link href="https://nasservocational-my.sharepoint.com/:x:/g/personal/mussab_aswad_nvtc_edu_bh/EfVGxHZP6J5Jia0sHIsd0SwBTKKbDtEq4r4SFJ4tullmmA?e=dx9kpT&nav=MTVfe0M2RjJFMEQ4LUI2NTMtMEI0MC1CMDExLTVFRUJDNzYwRjMxQX0" target="_blank" rel="noopener noreferrer">
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      Exams
+                    </Link>
+                  </Button>
+                  <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+                    <Link href="https://moodle.nvtc.edu.bh" target="_blank" rel="noopener noreferrer">
+                      <BookOpen className="h-4 w-4 mr-2" />
+                      Moodle
+                    </Link>
+                  </Button>
+                  <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+                    <Link href="https://sis.nvtc.edu.bh" target="_blank" rel="noopener noreferrer">
+                      <GraduationCap className="h-4 w-4 mr-2" />
+                      SIS
+                    </Link>
+                  </Button>
+                  <Button asChild variant="ghost" size="icon" className="sm:hidden">
+                    <Link href="https://nasservocational-my.sharepoint.com/:x:/g/personal/mussab_aswad_nvtc_edu_bh/EfVGxHZP6J5Jia0sHIsd0SwBTKKbDtEq4r4SFJ4tullmmA?e=dx9kpT&nav=MTVfe0M2RjJFMEQ4LUI2NTMtMEI0MC1CMDExLTVFRUJDNzYwRjMxQX0" target="_blank" rel="noopener noreferrer">
+                      <FileSpreadsheet className="h-5 w-5" />
+                      <span className="sr-only">Exams</span>
+                    </Link>
+                  </Button>
+                  <Button asChild variant="ghost" size="icon" className="sm:hidden">
+                    <Link href="https://moodle.nvtc.edu.bh" target="_blank" rel="noopener noreferrer">
+                      <BookOpen className="h-5 w-5" />
+                      <span className="sr-only">Moodle</span>
+                    </Link>
+                  </Button>
+                  <Button asChild variant="ghost" size="icon" className="sm:hidden">
+                    <Link href="https://sis.nvtc.edu.bh" target="_blank" rel="noopener noreferrer">
+                      <GraduationCap className="h-5 w-5" />
+                      <span className="sr-only">SIS</span>
+                    </Link>
+                  </Button>
+                  <ModeToggle />
+                </div>
+              </div>
             </header>
             <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
               {children}
