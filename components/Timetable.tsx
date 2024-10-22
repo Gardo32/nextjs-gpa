@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Button } from '@/components/ui/button'
-import { ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Progress } from '@/components/ui/progress'
 import { timetables } from '../lib/timetable'
 
 export default function ClassSchedule() {
@@ -13,7 +12,7 @@ export default function ClassSchedule() {
   const [currentClass, setCurrentClass] = useState(null)
   const [nextClass, setNextClass] = useState(null)
   const [todayClasses, setTodayClasses] = useState([])
-  const [timeInfo, setTimeInfo] = useState({ current: '', elapsed: '', remaining: '' })
+  const [timeInfo, setTimeInfo] = useState({ current: '', elapsed: '', remaining: '', percentageRemaining: 100 })
 
   useEffect(() => {
     const savedClass = localStorage.getItem('selectedClass')
@@ -22,12 +21,12 @@ export default function ClassSchedule() {
     updateSchedule()
     const interval = setInterval(updateSchedule, 1000)
     return () => clearInterval(interval)
-  }, [selectedClass]) // Add selectedClass dependency
+  }, [selectedClass])
 
   const updateSchedule = () => {
     const now = new Date()
     const currentTime = now.toLocaleTimeString('en-US', { hour12: false }).slice(0, 5)
-    const currentDay = now.getDay() // No need to adjust, use 0-6 range
+    const currentDay = now.getDay()
     
     const todaySchedule = timetables[selectedClass]?.schedules[currentDay] || []
     setTodayClasses(todaySchedule)
@@ -52,7 +51,7 @@ export default function ClassSchedule() {
     if (!currentClassFound) {
       setCurrentClass(null)
       setNextClass(todaySchedule[0])
-      setTimeInfo({ current: currentTime, elapsed: '', remaining: '' })
+      setTimeInfo({ current: currentTime, elapsed: '', remaining: '', percentageRemaining: 100 })
     }
   }
 
@@ -71,35 +70,23 @@ export default function ClassSchedule() {
 
     const elapsed = Math.max(0, Math.floor((now - startTime) / 1000))
     const remaining = Math.max(0, Math.floor((endTime - now) / 1000))
+    const totalDuration = Math.floor((endTime - startTime) / 1000)
+    const percentageRemaining = Math.round((remaining / totalDuration) * 100)
 
     setTimeInfo({
       current: now.toLocaleTimeString('en-US', { hour12: false }),
       elapsed: `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`,
-      remaining: `${Math.floor(remaining / 60)}m ${remaining % 60}s`
+      remaining: `${Math.floor(remaining / 60)}m ${remaining % 60}s`,
+      percentageRemaining
     })
   }
 
-  const Expandable = ({ title, children }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  return (
-    <div className="border rounded-lg p-4">
-      <button 
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center justify-between w-full"
-      >
-        <h3 className="font-medium">{title}</h3>
-        {isExpanded ? <ChevronUp /> : <ChevronDown />}
-      </button>
-      
-      {isExpanded && (
-        <div className="mt-4">
-          {children}
-        </div>
-      )}
-    </div>
-  );
-};
+  const getProgressColor = (percentage) => {
+    if (percentage > 50) return 'bg-green-500'
+    if (percentage > 25) return 'bg-yellow-500'
+    if (percentage > 10) return 'bg-orange-500'
+    return 'bg-red-500'
+  }
 
   return (
     <Card className="w-full max-w-4xl">
@@ -125,7 +112,7 @@ export default function ClassSchedule() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div>
             <p className="text-lg font-medium">
               Current Class: {currentClass ? `${currentClass.subject} (${currentClass.room}, ${currentClass.teacher})` : 'None'}
@@ -140,11 +127,16 @@ export default function ClassSchedule() {
               <>
                 <p>Time Elapsed: {timeInfo.elapsed}</p>
                 <p>Time Remaining: {timeInfo.remaining}</p>
+                <div className="mt-2">
+                  <Progress 
+                    value={timeInfo.percentageRemaining} 
+                    className={`h-2 ${getProgressColor(timeInfo.percentageRemaining)}`}
+                  />
+                </div>
               </>
             )}
           </div>
         </div>
-
         <Table>
           <TableHeader>
             <TableRow>
