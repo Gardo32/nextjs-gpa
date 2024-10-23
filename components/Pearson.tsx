@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CheckCircle, AlertTriangle, XCircle, Cloud, Cpu, Shield, Globe } from "lucide-react"; // Importing major icons
+import { CheckCircle, AlertTriangle, XCircle, Cloud, Cpu, Shield, Globe, Edit2 } from "lucide-react";
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -16,7 +16,9 @@ export default function PearsonTracker() {
   const [password, setPassword] = useState('');
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [newAssignment, setNewAssignment] = useState({ name: '', dueDate: '', major: '' });
+  const [editingAssignment, setEditingAssignment] = useState(null);
   const [assignments, setAssignments] = useState([]);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const checkPassword = () => {
     const appPassword = process.env.NEXT_PUBLIC_APP_PASSWORD;
@@ -66,6 +68,10 @@ export default function PearsonTracker() {
     });
   };
 
+  const formatDateForInput = (dateString) => {
+    return new Date(dateString).toISOString().slice(0, 16);
+  };
+
   const fetchAssignments = async () => {
     const { data, error } = await supabase
       .from('assignments')
@@ -79,7 +85,7 @@ export default function PearsonTracker() {
   };
 
   const addAssignment = async () => {
-    const dueDateISO = new Date(newAssignment.dueDate).toISOString(); // Convert to ISO format
+    const dueDateISO = new Date(newAssignment.dueDate).toISOString();
 
     const { data, error } = await supabase
       .from('assignments')
@@ -88,13 +94,44 @@ export default function PearsonTracker() {
     if (error) {
       console.error('Error adding assignment:', error);
     } else {
-      fetchAssignments(); // Refresh the list of assignments
-      setNewAssignment({ name: '', dueDate: '', major: '' }); // Reset form
+      fetchAssignments();
+      setNewAssignment({ name: '', dueDate: '', major: '' });
+    }
+  };
+
+  const startEditing = (assignment) => {
+    setEditingAssignment({
+      ...assignment,
+      dueDate: formatDateForInput(assignment.due_date)
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const updateAssignment = async () => {
+    if (!editingAssignment) return;
+
+    const dueDateISO = new Date(editingAssignment.dueDate).toISOString();
+
+    const { error } = await supabase
+      .from('assignments')
+      .update({
+        name: editingAssignment.name,
+        due_date: dueDateISO,
+        major: editingAssignment.major
+      })
+      .eq('id', editingAssignment.id);
+
+    if (error) {
+      console.error('Error updating assignment:', error);
+    } else {
+      fetchAssignments();
+      setEditingAssignment(null);
+      setIsEditDialogOpen(false);
     }
   };
 
   const deleteAssignment = async (id) => {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('assignments')
       .delete()
       .eq('id', id);
@@ -102,12 +139,12 @@ export default function PearsonTracker() {
     if (error) {
       console.error('Error deleting assignment:', error);
     } else {
-      fetchAssignments(); // Refresh the list of assignments
+      fetchAssignments();
     }
   };
 
   useEffect(() => {
-    fetchAssignments(); // Fetch assignments on component mount
+    fetchAssignments();
   }, []);
 
   return (
@@ -124,7 +161,7 @@ export default function PearsonTracker() {
             return (
               <div key={assignment.id} className="flex justify-between items-center p-4 bg-transparent dark:bg-transparent border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm">
                 <div className="flex items-center space-x-2">
-                  {majorIcon} {/* Major Icon */}
+                  {majorIcon}
                   <div>
                     <p className="font-medium text-lg text-black dark:text-white">{assignment.name}</p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">Due: {formattedDueDate}</p>
@@ -134,13 +171,22 @@ export default function PearsonTracker() {
                   {icon}
                   <p className="font-medium text-black dark:text-white">{label}</p>
                   {isAuthorized && (
-                    <Button 
-                      variant="outline" 
-                      className="ml-4 border-transparent hover:bg-gray-200 dark:hover:bg-gray-700"
-                      onClick={() => deleteAssignment(assignment.id)}
-                    >
-                      Delete
-                    </Button>
+                    <div className="flex items-center space-x-2 ml-4">
+                      <Button 
+                        variant="outline"
+                        className="border-transparent hover:bg-gray-200 dark:hover:bg-gray-700"
+                        onClick={() => startEditing(assignment)}
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        className="border-transparent hover:bg-gray-200 dark:hover:bg-gray-700"
+                        onClick={() => deleteAssignment(assignment.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -152,7 +198,9 @@ export default function PearsonTracker() {
           <div className="mt-6">
             <Dialog>
               <DialogTrigger asChild>
-                <Button className="bg-transparent text-black dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600">Add New Assignment</Button>
+                <Button className="bg-transparent text-black dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600">
+                  Add New Assignment
+                </Button>
               </DialogTrigger>
               <DialogContent className="bg-transparent shadow-none border border-gray-300 dark:border-gray-600">
                 <DialogHeader>
@@ -172,7 +220,6 @@ export default function PearsonTracker() {
                   onChange={(e) => setNewAssignment({ ...newAssignment, dueDate: e.target.value })}
                   className="dark:bg-gray-800 dark:text-white bg-transparent border border-gray-300 dark:border-gray-600"
                 />
-                {/* Dropdown for major selection */}
                 <select
                   value={newAssignment.major}
                   onChange={(e) => setNewAssignment({ ...newAssignment, major: e.target.value })}
@@ -184,7 +231,56 @@ export default function PearsonTracker() {
                   <option value="cybersecurity" className="bg-transparent">Cybersecurity</option>
                   <option value="global" className="bg-transparent">Global Studies</option>
                 </select>
-                <Button className="mt-4 bg-transparent text-black dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600" onClick={addAssignment}>Submit</Button>
+                <Button 
+                  className="mt-4 bg-transparent text-black dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600"
+                  onClick={addAssignment}
+                >
+                  Submit
+                </Button>
+              </DialogContent>
+            </Dialog>
+
+            {/* Edit Dialog */}
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+              <DialogContent className="bg-transparent shadow-none border border-gray-300 dark:border-gray-600">
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-semibold text-black dark:text-white">Edit Assignment</DialogTitle>
+                </DialogHeader>
+                {editingAssignment && (
+                  <>
+                    <Input
+                      type="text"
+                      placeholder="Assignment Name"
+                      value={editingAssignment.name}
+                      onChange={(e) => setEditingAssignment({ ...editingAssignment, name: e.target.value })}
+                      className="dark:bg-gray-800 dark:text-white bg-transparent border border-gray-300 dark:border-gray-600"
+                    />
+                    <Input
+                      type="datetime-local"
+                      placeholder="Due Date"
+                      value={editingAssignment.dueDate}
+                      onChange={(e) => setEditingAssignment({ ...editingAssignment, dueDate: e.target.value })}
+                      className="dark:bg-gray-800 dark:text-white bg-transparent border border-gray-300 dark:border-gray-600"
+                    />
+                    <select
+                      value={editingAssignment.major}
+                      onChange={(e) => setEditingAssignment({ ...editingAssignment, major: e.target.value })}
+                      className="mt-2 w-full p-2 bg-transparent border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white text-black focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                    >
+                      <option value="" className="bg-transparent text-gray-500 dark:text-gray-400">Select Major</option>
+                      <option value="cloud" className="bg-transparent">Cloud Computing</option>
+                      <option value="AI" className="bg-transparent">Artificial Intelligence</option>
+                      <option value="cybersecurity" className="bg-transparent">Cybersecurity</option>
+                      <option value="global" className="bg-transparent">Global Studies</option>
+                    </select>
+                    <Button 
+                      className="mt-4 bg-transparent text-black dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600"
+                      onClick={updateAssignment}
+                    >
+                      Save Changes
+                    </Button>
+                  </>
+                )}
               </DialogContent>
             </Dialog>
           </div>
@@ -199,7 +295,12 @@ export default function PearsonTracker() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="dark:bg-black-800 dark:text-white bg-transparent border border-gray-300 dark:border-gray-600"
               />
-              <Button className="bg-transparent text-black dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600" onClick={checkPassword}>Submit</Button>
+              <Button 
+                className="bg-transparent text-black dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600"
+                onClick={checkPassword}
+              >
+                Submit
+              </Button>
             </div>
           </div>
         )}
