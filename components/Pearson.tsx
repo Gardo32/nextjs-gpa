@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CheckCircle, AlertTriangle, XCircle, Cloud, Cpu, Shield, Globe, Edit2 } from "lucide-react";
+import { CheckCircle, AlertTriangle, XCircle, Cloud, Cpu, Shield, Globe, Edit2, Clock } from "lucide-react";
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -30,15 +30,39 @@ export default function PearsonTracker() {
   };
 
   const getAssignmentStatus = (dueDate) => {
-    const timeLeft = new Date(dueDate).getTime() - new Date().getTime();
-    const daysLeft = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
+    const now = new Date();
+    const due = new Date(dueDate);
+    
+    // For debugging
+    console.log('Assignment due date:', due.toLocaleString());
+    console.log('Current time:', now.toLocaleString());
+    console.log('Time difference (ms):', due - now);
+    console.log('Days difference:', Math.ceil((due - now) / (1000 * 60 * 60 * 24)));
 
-    if (daysLeft > 7) {
-      return { icon: <CheckCircle className="text-green-500 w-6 h-6" />, label: 'Safe' };
-    } else if (daysLeft > 2) {
-      return { icon: <AlertTriangle className="text-yellow-500 w-6 h-6" />, label: 'Caution' };
+    if (now > due) {
+      return { 
+        icon: <Clock className="text-gray-500 w-6 h-6" />, 
+        label: 'Expired',
+        className: 'text-gray-500'
+      };
+    } else if ((due - now) > (7 * 24 * 60 * 60 * 1000)) {
+      return { 
+        icon: <CheckCircle className="text-green-500 w-6 h-6" />, 
+        label: 'Safe',
+        className: 'text-green-500'
+      };
+    } else if ((due - now) > (2 * 24 * 60 * 60 * 1000)) {
+      return { 
+        icon: <AlertTriangle className="text-yellow-500 w-6 h-6" />, 
+        label: 'Caution',
+        className: 'text-yellow-500'
+      };
     } else {
-      return { icon: <XCircle className="text-red-500 w-6 h-6" />, label: 'Danger' };
+      return { 
+        icon: <XCircle className="text-red-500 w-6 h-6" />, 
+        label: 'Danger',
+        className: 'text-red-500'
+      };
     }
   };
 
@@ -75,7 +99,8 @@ export default function PearsonTracker() {
   const fetchAssignments = async () => {
     const { data, error } = await supabase
       .from('assignments')
-      .select('*');
+      .select('*')
+      .order('due_date', { ascending: true });  // Sort by due date
 
     if (error) {
       console.error('Error fetching assignments:', error);
@@ -145,6 +170,9 @@ export default function PearsonTracker() {
 
   useEffect(() => {
     fetchAssignments();
+    // Refresh assignments every minute to update statuses
+    const interval = setInterval(fetchAssignments, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -155,21 +183,24 @@ export default function PearsonTracker() {
       <CardContent>
         <div className="space-y-4">
           {assignments.map((assignment) => {
-            const { icon, label } = getAssignmentStatus(assignment.due_date);
+            const { icon, label, className } = getAssignmentStatus(assignment.due_date);
             const formattedDueDate = formatDate(assignment.due_date);
             const majorIcon = getMajorIcon(assignment.major);
             return (
-              <div key={assignment.id} className="flex justify-between items-center p-4 bg-transparent dark:bg-transparent border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm">
+              <div 
+                key={assignment.id} 
+                className={`flex justify-between items-center p-4 bg-transparent dark:bg-transparent border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm ${label === 'Expired' ? 'opacity-60' : ''}`}
+              >
                 <div className="flex items-center space-x-2">
                   {majorIcon}
                   <div>
                     <p className="font-medium text-lg text-black dark:text-white">{assignment.name}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Due: {formattedDueDate}</p>
+                    <p className={`text-sm ${className}`}>Due: {formattedDueDate}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   {icon}
-                  <p className="font-medium text-black dark:text-white">{label}</p>
+                  <p className={`font-medium ${className}`}>{label}</p>
                   {isAuthorized && (
                     <div className="flex items-center space-x-2 ml-4">
                       <Button 
