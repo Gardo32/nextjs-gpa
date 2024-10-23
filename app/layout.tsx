@@ -13,6 +13,11 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Grade 12 Utils',
   description: 'Utilities for NVTC Grade 12 IT students',
+  icons: {
+    icon: "https://github.com/Gardo32/nextjs-gpa/blob/main/designer_6lW_icon.ico",
+    apple: "https://github.com/Gardo32/nextjs-gpa/blob/main/designer_6lW_icon.ico",
+    shortcut: "https://github.com/Gardo32/nextjs-gpa/blob/main/designer_6lW_icon.ico"
+  }
 }
 
 export default function RootLayout({

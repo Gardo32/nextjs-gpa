@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CheckCircle, AlertTriangle, XCircle, Cloud, Cpu, Shield, Globe, Edit2, Clock } from "lucide-react";
+import { CheckCircle, AlertTriangle, XCircle, Cloud, Cpu, Shield, Edit2, Clock } from "lucide-react";
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -19,6 +19,14 @@ export default function PearsonTracker() {
   const [editingAssignment, setEditingAssignment] = useState(null);
   const [assignments, setAssignments] = useState([]);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedMajors, setSelectedMajors] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const majorOptions = [
+    { value: 'cloud', label: 'Cloud Computing', icon: Cloud, color: 'text-blue-500' },
+    { value: 'AI', label: 'Artificial Intelligence', icon: Cpu, color: 'text-green-500' },
+    { value: 'cybersecurity', label: 'Cybersecurity', icon: Shield, color: 'text-red-500' }
+  ];
 
   const checkPassword = () => {
     const appPassword = process.env.NEXT_PUBLIC_APP_PASSWORD;
@@ -33,12 +41,6 @@ export default function PearsonTracker() {
     const now = new Date();
     const due = new Date(dueDate);
     
-    // For debugging
-    console.log('Assignment due date:', due.toLocaleString());
-    console.log('Current time:', now.toLocaleString());
-    console.log('Time difference (ms):', due - now);
-    console.log('Days difference:', Math.ceil((due - now) / (1000 * 60 * 60 * 24)));
-
     if (now > due) {
       return { 
         icon: <Clock className="text-gray-500 w-6 h-6" />, 
@@ -67,18 +69,12 @@ export default function PearsonTracker() {
   };
 
   const getMajorIcon = (major) => {
-    switch (major) {
-      case 'cloud':
-        return <Cloud className="text-blue-500 w-6 h-6" />;
-      case 'AI':
-        return <Cpu className="text-green-500 w-6 h-6" />;
-      case 'cybersecurity':
-        return <Shield className="text-red-500 w-6 h-6" />;
-      case 'global':
-        return <Globe className="text-purple-500 w-6 h-6" />;
-      default:
-        return null;
+    const option = majorOptions.find(opt => opt.value === major);
+    if (option) {
+      const Icon = option.icon;
+      return <Icon className={`w-6 h-6 ${option.color}`} />;
     }
+    return null;
   };
 
   const formatDate = (dateString) => {
@@ -96,11 +92,45 @@ export default function PearsonTracker() {
     return new Date(dateString).toISOString().slice(0, 16);
   };
 
+  const handleMajorToggle = (major) => {
+    setSelectedMajors(prev => {
+      if (prev.includes(major)) {
+        return prev.filter(m => m !== major);
+      } else {
+        return [...prev, major];
+      }
+    });
+  };
+
+  const getFilteredAssignments = () => {
+    return assignments.filter(assignment => {
+      const status = getAssignmentStatus(assignment.due_date).label;
+      const matchesMajor = selectedMajors.length === 0 || 
+        (assignment.major === 'global' || selectedMajors.includes(assignment.major));
+      const matchesStatus = statusFilter === 'all' || status === statusFilter;
+      return matchesMajor && matchesStatus;
+    });
+  };
+
+  const getAssignmentMajors = (assignment) => {
+    if (assignment.major === 'global') {
+      return majorOptions.map(option => ({
+        icon: option.icon,
+        color: option.color
+      }));
+    }
+    const option = majorOptions.find(opt => opt.value === assignment.major);
+    return option ? [{
+      icon: option.icon,
+      color: option.color
+    }] : [];
+  };
+
   const fetchAssignments = async () => {
     const { data, error } = await supabase
       .from('assignments')
       .select('*')
-      .order('due_date', { ascending: true });  // Sort by due date
+      .order('due_date', { ascending: true });
 
     if (error) {
       console.error('Error fetching assignments:', error);
@@ -170,31 +200,70 @@ export default function PearsonTracker() {
 
   useEffect(() => {
     fetchAssignments();
-    // Refresh assignments every minute to update statuses
     const interval = setInterval(fetchAssignments, 60000);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <Card className="w-full max-w-4xl mx-auto bg-transparent shadow-none rounded-lg">
+    <Card className="w-full max-w-4xl mx-auto">
       <CardHeader>
-        <CardTitle className="text-2xl font-bold text-black dark:text-white">Pearson Assignment Tracker</CardTitle>
+        <CardTitle className="text-2xl font-bold">Pearson Assignment Tracker</CardTitle>
       </CardHeader>
       <CardContent>
+        {/* Filters */}
+        <div className="mb-6 space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {majorOptions.map(major => (
+              <Button
+                key={major.value}
+                onClick={() => handleMajorToggle(major.value)}
+                variant={selectedMajors.includes(major.value) ? "default" : "outline"}
+                className={`flex items-center space-x-2 ${
+                  selectedMajors.includes(major.value) 
+                    ? "bg-primary text-primary-foreground" 
+                    : ""
+                }`}
+              >
+                <major.icon className={major.color} />
+                <span>{major.label}</span>
+              </Button>
+            ))}
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full md:w-auto p-2 rounded-lg border"
+          >
+            <option value="all">All Statuses</option>
+            <option value="Safe">Safe</option>
+            <option value="Caution">Caution</option>
+            <option value="Danger">Danger</option>
+            <option value="Expired">Expired</option>
+          </select>
+        </div>
+
+        {/* Assignments List */}
         <div className="space-y-4">
-          {assignments.map((assignment) => {
+          {getFilteredAssignments().map((assignment) => {
             const { icon, label, className } = getAssignmentStatus(assignment.due_date);
             const formattedDueDate = formatDate(assignment.due_date);
-            const majorIcon = getMajorIcon(assignment.major);
+            const assignmentMajors = getAssignmentMajors(assignment);
             return (
               <div 
                 key={assignment.id} 
-                className={`flex justify-between items-center p-4 bg-transparent dark:bg-transparent border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm ${label === 'Expired' ? 'opacity-60' : ''}`}
+                className={`flex justify-between items-center p-4 border rounded-lg ${label === 'Expired' ? 'opacity-60' : ''}`}
               >
                 <div className="flex items-center space-x-2">
-                  {majorIcon}
+                  <div className="flex space-x-1">
+                    {assignmentMajors.map((major, index) => {
+                      const Icon = major.icon;
+                      return (
+                        <Icon key={index} className={`w-6 h-6 ${major.color}`} />
+                      );
+                    })}
+                  </div>
                   <div>
-                    <p className="font-medium text-lg text-black dark:text-white">{assignment.name}</p>
+                    <p className="font-medium text-lg">{assignment.name}</p>
                     <p className={`text-sm ${className}`}>Due: {formattedDueDate}</p>
                   </div>
                 </div>
@@ -205,14 +274,12 @@ export default function PearsonTracker() {
                     <div className="flex items-center space-x-2 ml-4">
                       <Button 
                         variant="outline"
-                        className="border-transparent hover:bg-gray-200 dark:hover:bg-gray-700"
                         onClick={() => startEditing(assignment)}
                       >
                         <Edit2 className="w-4 h-4" />
                       </Button>
                       <Button 
                         variant="outline"
-                        className="border-transparent hover:bg-gray-200 dark:hover:bg-gray-700"
                         onClick={() => deleteAssignment(assignment.id)}
                       >
                         Delete
@@ -229,43 +296,38 @@ export default function PearsonTracker() {
           <div className="mt-6">
             <Dialog>
               <DialogTrigger asChild>
-                <Button className="bg-transparent text-black dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600">
-                  Add New Assignment
-                </Button>
+                <Button>Add New Assignment</Button>
               </DialogTrigger>
-              <DialogContent className="bg-transparent shadow-none border border-gray-300 dark:border-gray-600">
+              <DialogContent>
                 <DialogHeader>
-                  <DialogTitle className="text-xl font-semibold text-black dark:text-white">Enter Assignment Details</DialogTitle>
+                  <DialogTitle>Enter Assignment Details</DialogTitle>
                 </DialogHeader>
                 <Input
                   type="text"
                   placeholder="Assignment Name"
                   value={newAssignment.name}
                   onChange={(e) => setNewAssignment({ ...newAssignment, name: e.target.value })}
-                  className="dark:bg-gray-800 dark:text-white bg-transparent border border-gray-300 dark:border-gray-600"
                 />
                 <Input
                   type="datetime-local"
                   placeholder="Due Date"
                   value={newAssignment.dueDate}
                   onChange={(e) => setNewAssignment({ ...newAssignment, dueDate: e.target.value })}
-                  className="dark:bg-gray-800 dark:text-white bg-transparent border border-gray-300 dark:border-gray-600"
                 />
                 <select
                   value={newAssignment.major}
                   onChange={(e) => setNewAssignment({ ...newAssignment, major: e.target.value })}
-                  className="mt-2 w-full p-2 bg-transparent border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white text-black focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                  className="w-full p-2 rounded-lg border"
                 >
-                  <option value="" className="bg-transparent text-gray-500 dark:text-gray-400">Select Major</option>
-                  <option value="cloud" className="bg-transparent">Cloud Computing</option>
-                  <option value="AI" className="bg-transparent">Artificial Intelligence</option>
-                  <option value="cybersecurity" className="bg-transparent">Cybersecurity</option>
-                  <option value="global" className="bg-transparent">Global Studies</option>
+                  <option value="">Select Major</option>
+                  {majorOptions.map(major => (
+                    <option key={major.value} value={major.value}>
+                      {major.label}
+                    </option>
+                  ))}
+                  <option value="global">All Majors</option>
                 </select>
-                <Button 
-                  className="mt-4 bg-transparent text-black dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600"
-                  onClick={addAssignment}
-                >
+                <Button onClick={addAssignment}>
                   Submit
                 </Button>
               </DialogContent>
@@ -273,9 +335,9 @@ export default function PearsonTracker() {
 
             {/* Edit Dialog */}
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-              <DialogContent className="bg-transparent shadow-none border border-gray-300 dark:border-gray-600">
+              <DialogContent>
                 <DialogHeader>
-                  <DialogTitle className="text-xl font-semibold text-black dark:text-white">Edit Assignment</DialogTitle>
+                  <DialogTitle>Edit Assignment</DialogTitle>
                 </DialogHeader>
                 {editingAssignment && (
                   <>
@@ -284,30 +346,27 @@ export default function PearsonTracker() {
                       placeholder="Assignment Name"
                       value={editingAssignment.name}
                       onChange={(e) => setEditingAssignment({ ...editingAssignment, name: e.target.value })}
-                      className="dark:bg-gray-800 dark:text-white bg-transparent border border-gray-300 dark:border-gray-600"
                     />
                     <Input
                       type="datetime-local"
                       placeholder="Due Date"
                       value={editingAssignment.dueDate}
                       onChange={(e) => setEditingAssignment({ ...editingAssignment, dueDate: e.target.value })}
-                      className="dark:bg-gray-800 dark:text-white bg-transparent border border-gray-300 dark:border-gray-600"
                     />
                     <select
                       value={editingAssignment.major}
                       onChange={(e) => setEditingAssignment({ ...editingAssignment, major: e.target.value })}
-                      className="mt-2 w-full p-2 bg-transparent border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white text-black focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                      className="w-full p-2 rounded-lg border"
                     >
-                      <option value="" className="bg-transparent text-gray-500 dark:text-gray-400">Select Major</option>
-                      <option value="cloud" className="bg-transparent">Cloud Computing</option>
-                      <option value="AI" className="bg-transparent">Artificial Intelligence</option>
-                      <option value="cybersecurity" className="bg-transparent">Cybersecurity</option>
-                      <option value="global" className="bg-transparent">Global Studies</option>
+                      <option value="">Select Major</option>
+                      {majorOptions.map(major => (
+                        <option key={major.value} value={major.value}>
+                          {major.label}
+                        </option>
+                      ))}
+                      <option value="global">All Majors</option>
                     </select>
-                    <Button 
-                      className="mt-4 bg-transparent text-black dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600"
-                      onClick={updateAssignment}
-                    >
+                    <Button onClick={updateAssignment}>
                       Save Changes
                     </Button>
                   </>
@@ -317,19 +376,15 @@ export default function PearsonTracker() {
           </div>
         ) : (
           <div className="mt-6">
-            <h2 className="text-lg font-medium text-black dark:text-white mb-2">Admin Login</h2>
+            <h2 className="text-lg font-medium mb-2">Admin Login</h2>
             <div className="flex items-center space-x-4">
               <Input
                 type="password"
                 placeholder="Enter password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="dark:bg-black-800 dark:text-white bg-transparent border border-gray-300 dark:border-gray-600"
               />
-              <Button 
-                className="bg-transparent text-black dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600"
-                onClick={checkPassword}
-              >
+              <Button onClick={checkPassword}>
                 Submit
               </Button>
             </div>
