@@ -12,10 +12,10 @@ import { useToast } from '@/components/ui/use-toast'
 export default function GPACalculator() {
   const [subjects, setSubjects] = useState([{ name: '', marks: '', hours: '' }])
   const [gpa, setGPA] = useState('N/A')
-  const [estimatedGPA, setEstimatedGPA] = useState('N/A') // State for estimated final GPA
+  const [estimatedGPA, setEstimatedGPA] = useState('N/A')
   const [selectedPreset, setSelectedPreset] = useState('')
-  const [minError, setMinError] = useState(0) // Minimum error input
-  const [maxError, setMaxError] = useState(0) // Maximum error input
+  const [minError, setMinError] = useState(0)
+  const [maxError, setMaxError] = useState(0)
   const { toast } = useToast()
 
   const loadPreset = (presetName: string) => {
@@ -27,13 +27,11 @@ export default function GPACalculator() {
         marks: '',
         hours: preset.hours[index].toString()
       })))
-      // Reset min and max error inputs based on preset values if applicable
       setMinError(0);
       setMaxError(0);
     }
   }
 
-  // Function to estimate the final exam mark based on provided range and hours
   const finalExamMarkEstimation = (start: number, finish: number, hour: number, mark: number): number => {
     if (start > finish) {
       throw new Error("Start should be less than or equal to finish.");
@@ -62,12 +60,12 @@ export default function GPACalculator() {
     let cumulativeWeight = 0;
 
     for (let i = start; i <= finish; i++) {
-      cumulativeWeight += weights[i - start]; // Adjust index for weights array
+      cumulativeWeight += weights[i - start];
       if (randomValue < cumulativeWeight) {
         return i;
       }
     }
-    return finish; // Fallback (shouldn't reach here if weights are properly normalized)
+    return finish;
   }
 
   const calculateGPA = () => {
@@ -106,6 +104,17 @@ export default function GPACalculator() {
         <CardTitle className="text-3xl font-bold">GPA Calculator</CardTitle>
       </CardHeader>
       <CardContent>
+        <style jsx global>{`
+          /* Remove spinner buttons from number inputs */
+          input[type="number"]::-webkit-inner-spin-button,
+          input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+          }
+          input[type="number"] {
+            -moz-appearance: textfield;
+          }
+        `}</style>
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="preset-selector">Select a preset:</Label>
@@ -150,17 +159,18 @@ export default function GPACalculator() {
                   type="text"
                   placeholder={`Subject ${index + 1}`}
                   value={subject.name}
-                  readOnly // Make the subject name read-only
+                  readOnly
                 />
                 <Input
                   type="number"
                   placeholder="Marks"
                   min="0"
-                  max="100" // Set max value to 100 for marks
+                  max="100"
                   value={subject.marks}
                   onChange={(e) => {
+                    const value = Math.min(parseInt(e.target.value) || 0, 100);
                     const newSubjects = [...subjects]
-                    newSubjects[index] = { ...newSubjects[index], marks: e.target.value }
+                    newSubjects[index] = { ...newSubjects[index], marks: value.toString() }
                     setSubjects(newSubjects)
                   }}
                 />
@@ -169,7 +179,7 @@ export default function GPACalculator() {
                   placeholder="Hours"
                   min="1"
                   value={subject.hours}
-                  readOnly // Make the hours read-only based on preset
+                  readOnly
                 />
               </div>
             ))}
