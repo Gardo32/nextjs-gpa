@@ -14,9 +14,9 @@ export const metadata: Metadata = {
   title: 'Grade 12 Utils',
   description: 'Utilities for NVTC Grade 12 IT students',
   icons: {
-    icon: "https://github.com/Gardo32/nextjs-gpa/blob/main/designer_6lW_icon.ico",
-    apple: "https://github.com/Gardo32/nextjs-gpa/blob/main/designer_6lW_icon.ico",
-    shortcut: "https://github.com/Gardo32/nextjs-gpa/blob/main/designer_6lW_icon.ico"
+    icon: "./designer_6lW_icon.ico",
+    apple: "./designer_6lW_icon.ico",
+    shortcut: "./designer_6lW_icon.ico"
   }
 }
 
