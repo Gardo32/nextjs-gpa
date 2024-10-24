@@ -13,10 +13,20 @@ export default function ClassSchedule() {
   const [nextClass, setNextClass] = useState(null)
   const [todayClasses, setTodayClasses] = useState([])
   const [timeInfo, setTimeInfo] = useState({ current: '', elapsed: '', remaining: '', percentageRemaining: 100 })
+  const [currentDay, setCurrentDay] = useState(0)
 
   useEffect(() => {
     const savedClass = localStorage.getItem('selectedClass')
     if (savedClass) setSelectedClass(savedClass)
+    
+    const savedDay = localStorage.getItem('currentDay')
+    if (savedDay) {
+      setCurrentDay(parseInt(savedDay))
+    } else {
+      const now = new Date()
+      const day = now.getDay()
+      setCurrentDay(day === 5 || day === 6 ? 0 : day) // Set to Sunday if it's Friday or Saturday
+    }
     
     updateSchedule()
     const interval = setInterval(updateSchedule, 1000)
@@ -26,7 +36,6 @@ export default function ClassSchedule() {
   const updateSchedule = () => {
     const now = new Date()
     const currentTime = now.toLocaleTimeString('en-US', { hour12: false }).slice(0, 5)
-    const currentDay = now.getDay()
     
     const todaySchedule = timetables[selectedClass]?.schedules[currentDay] || []
     setTodayClasses(todaySchedule)
@@ -52,7 +61,24 @@ export default function ClassSchedule() {
       setCurrentClass(null)
       setNextClass(todaySchedule[0])
       setTimeInfo({ current: currentTime, elapsed: '', remaining: '', percentageRemaining: 100 })
+
+      // Check if all classes for the day are finished
+      if (todaySchedule.length > 0) {
+        const lastClass = todaySchedule[todaySchedule.length - 1]
+        const [lastEndHour, lastEndMin] = lastClass.end.split(':')
+        const lastEndTime = `${lastEndHour.padStart(2, '0')}:${lastEndMin.padStart(2, '0')}`
+        
+        if (currentTime >= lastEndTime) {
+          moveToNextDay()
+        }
+      }
     }
+  }
+
+  const moveToNextDay = () => {
+    const nextDay = (currentDay + 1) % 5 // Cycle through 0 (Sunday) to 4 (Thursday)
+    setCurrentDay(nextDay)
+    localStorage.setItem('currentDay', nextDay.toString())
   }
 
   const updateTimeInfo = (current) => {
@@ -88,10 +114,15 @@ export default function ClassSchedule() {
     return 'bg-red-500'
   }
 
+  const getDayName = (day) => {
+    const days = ['','Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']
+    return days[day]
+  }
+
   return (
     <Card className="w-full max-w-4xl">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Class Schedule</CardTitle>
+        <CardTitle>Class Schedule - {getDayName(currentDay)}</CardTitle>
         <div className="flex items-center gap-4">
           <Select 
             value={selectedClass} 
