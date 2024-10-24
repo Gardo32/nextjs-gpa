@@ -123,9 +123,11 @@ export default function GPACalculator() {
                 <SelectValue placeholder="Select a preset" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="CCP">CCP</SelectItem>
-                <SelectItem value="SEC">SEC</SelectItem>
-                <SelectItem value="AI">AI</SelectItem>
+                {Object.keys(presets).map((presetKey) => (
+                  <SelectItem key={presetKey} value={presetKey}>
+                    {presetKey}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
