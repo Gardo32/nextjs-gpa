@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CheckCircle, AlertTriangle, XCircle, Cloud, Cpu, Shield, Edit2, Clock } from "lucide-react";
+import { CheckCircle, AlertTriangle, XCircle, Cloud, Cpu, Shield, Edit2, Clock, GraduationCap } from "lucide-react";
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -15,17 +15,23 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export default function PearsonTracker() {
   const [password, setPassword] = useState('');
   const [isAuthorized, setIsAuthorized] = useState(false);
-  const [newAssignment, setNewAssignment] = useState({ name: '', dueDate: '', major: '' });
+  const [newAssignment, setNewAssignment] = useState({ name: '', dueDate: '', major: '', grade: '' });
   const [editingAssignment, setEditingAssignment] = useState(null);
   const [assignments, setAssignments] = useState([]);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedMajors, setSelectedMajors] = useState([]);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [gradeFilter, setGradeFilter] = useState('all');
 
   const majorOptions = [
     { value: 'cloud', label: 'Cloud Computing', icon: Cloud, color: 'text-blue-500' },
     { value: 'AI', label: 'Artificial Intelligence', icon: Cpu, color: 'text-green-500' },
     { value: 'cybersecurity', label: 'Cybersecurity', icon: Shield, color: 'text-red-500' }
+  ];
+
+  const gradeOptions = [
+    { value: 'grade12', label: 'Grade 12', icon: GraduationCap },
+    { value: 'grade11', label: 'Grade 11', icon: GraduationCap }
   ];
 
   const checkPassword = () => {
@@ -77,6 +83,14 @@ export default function PearsonTracker() {
     return null;
   };
 
+  const getGradeIcon = (grade) => {
+    const option = gradeOptions.find(opt => opt.value === grade);
+    if (option) {
+      return <option.icon className="w-6 h-6 text-purple-500" />;
+    }
+    return null;
+  };
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString('en-US', {
       year: 'numeric',
@@ -108,7 +122,8 @@ export default function PearsonTracker() {
       const matchesMajor = selectedMajors.length === 0 || 
         (assignment.major === 'global' || selectedMajors.includes(assignment.major));
       const matchesStatus = statusFilter === 'all' || status === statusFilter;
-      return matchesMajor && matchesStatus;
+      const matchesGrade = gradeFilter === 'all' || assignment.grade === gradeFilter;
+      return matchesMajor && matchesStatus && matchesGrade;
     });
   };
 
@@ -144,13 +159,18 @@ export default function PearsonTracker() {
 
     const { data, error } = await supabase
       .from('assignments')
-      .insert([{ name: newAssignment.name, due_date: dueDateISO, major: newAssignment.major }]);
+      .insert([{ 
+        name: newAssignment.name, 
+        due_date: dueDateISO, 
+        major: newAssignment.major,
+        grade: newAssignment.grade 
+      }]);
 
     if (error) {
       console.error('Error adding assignment:', error);
     } else {
       fetchAssignments();
-      setNewAssignment({ name: '', dueDate: '', major: '' });
+      setNewAssignment({ name: '', dueDate: '', major: '', grade: '' });
     }
   };
 
@@ -172,7 +192,8 @@ export default function PearsonTracker() {
       .update({
         name: editingAssignment.name,
         due_date: dueDateISO,
-        major: editingAssignment.major
+        major: editingAssignment.major,
+        grade: editingAssignment.grade
       })
       .eq('id', editingAssignment.id);
 
@@ -229,17 +250,31 @@ export default function PearsonTracker() {
               </Button>
             ))}
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full md:w-auto p-2 rounded-lg border"
-          >
-            <option value="all">All Statuses</option>
-            <option value="Safe">Safe</option>
-            <option value="Caution">Caution</option>
-            <option value="Danger">Danger</option>
-            <option value="Expired">Expired</option>
-          </select>
+          <div className="flex gap-4">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full md:w-auto p-2 rounded-lg border"
+            >
+              <option value="all">All Statuses</option>
+              <option value="Safe">Safe</option>
+              <option value="Caution">Caution</option>
+              <option value="Danger">Danger</option>
+              <option value="Expired">Expired</option>
+            </select>
+            <select
+              value={gradeFilter}
+              onChange={(e) => setGradeFilter(e.target.value)}
+              className="w-full md:w-auto p-2 rounded-lg border"
+            >
+              <option value="all">All Grades</option>
+              {gradeOptions.map(grade => (
+                <option key={grade.value} value={grade.value}>
+                  {grade.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Assignments List */}
@@ -265,6 +300,9 @@ export default function PearsonTracker() {
                   <div>
                     <p className="font-medium text-lg">{assignment.name}</p>
                     <p className={`text-sm ${className}`}>Due: {formattedDueDate}</p>
+                    <p className="text-sm text-purple-500">
+                      {gradeOptions.find(g => g.value === assignment.grade)?.label || 'No Grade'}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -327,6 +365,18 @@ export default function PearsonTracker() {
                   ))}
                   <option value="global">All Majors</option>
                 </select>
+                <select
+                  value={newAssignment.grade}
+                  onChange={(e) => setNewAssignment({ ...newAssignment, grade: e.target.value })}
+                  className="w-full p-2 rounded-lg border"
+                >
+                  <option value="">Select Grade</option>
+                  {gradeOptions.map(grade => (
+                    <option key={grade.value} value={grade.value}>
+                      {grade.label}
+                    </option>
+                  ))}
+                </select>
                 <Button onClick={addAssignment}>
                   Submit
                 </Button>
@@ -365,6 +415,18 @@ export default function PearsonTracker() {
                         </option>
                       ))}
                       <option value="global">All Majors</option>
+                    </select>
+                    <select
+                      value={editingAssignment.grade}
+                      onChange={(e) => setEditingAssignment({ ...editingAssignment, grade: e.target.value })}
+                      className="w-full p-2 rounded-lg border"
+                    >
+                      <option value="">Select Grade</option>
+                      {gradeOptions.map(grade => (
+                        <option key={grade.value} value={grade.value}>
+                          {grade.label}
+                        </option>
+                      ))}
                     </select>
                     <Button onClick={updateAssignment}>
                       Save Changes
