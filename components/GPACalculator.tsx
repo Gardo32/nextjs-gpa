@@ -51,8 +51,11 @@ export default function GPACalculator() {
     const totalWeight = weights.reduce((acc, w) => acc + w, 0);
     const normalizedWeights = weights.map(w => w / totalWeight);
     
+    // Get the selected number based on the weighted random choice
     const selectedNumber = weightedRandomChoice(start, finish, normalizedWeights);
-    return mark - selectedNumber;
+    
+    // Return the estimated final exam mark
+    return 60 * (mark / 100) + (40 - selectedNumber);
   }
 
   const weightedRandomChoice = (start: number, finish: number, weights: number[]): number => {
@@ -81,6 +84,7 @@ export default function GPACalculator() {
         totalMarks += marks * hours
         totalHours += hours
         
+        // Calculate estimated marks using the updated estimation method
         const estimatedMarks = finalExamMarkEstimation(minError, maxError, hours, marks);
         estimatedTotalMarks += estimatedMarks * hours
       }
