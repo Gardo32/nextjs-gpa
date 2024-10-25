@@ -14,23 +14,49 @@ export default function ClassSchedule() {
   const [todayClasses, setTodayClasses] = useState([])
   const [timeInfo, setTimeInfo] = useState({ current: '', elapsed: '', remaining: '', percentageRemaining: 100 })
   const [currentDay, setCurrentDay] = useState(0)
+  const [isWeekend, setIsWeekend] = useState(false)
 
   useEffect(() => {
     const savedClass = localStorage.getItem('selectedClass')
     if (savedClass) setSelectedClass(savedClass)
     
     const savedDay = localStorage.getItem('currentDay')
-    if (savedDay) {
+    const now = new Date()
+    const day = now.getDay()
+    
+    // Check if it's weekend (Friday or Saturday)
+    const weekend = day === 5 || day === 6
+    setIsWeekend(weekend)
+    
+    // Always show Sunday's schedule (0), but only set currentDay to saved day if it's not weekend
+    if (savedDay && !weekend) {
       setCurrentDay(parseInt(savedDay))
     } else {
-      const now = new Date()
-      const day = now.getDay()
-      setCurrentDay(day === 5 || day === 6 ? 0 : day) // Set to Sunday if it's Friday or Saturday
+      setCurrentDay(0) // Show Sunday's schedule
     }
+
+    // Set up time update interval regardless of weekend
+    const timeInterval = setInterval(() => {
+      const currentTime = new Date().toLocaleTimeString('en-US', { hour12: false })
+      setTimeInfo(prev => ({ ...prev, current: currentTime }))
+    }, 1000)
     
-    updateSchedule()
-    const interval = setInterval(updateSchedule, 1000)
-    return () => clearInterval(interval)
+    // Only update class schedule if it's not weekend
+    if (!weekend) {
+      updateSchedule()
+      const scheduleInterval = setInterval(updateSchedule, 1000)
+      return () => {
+        clearInterval(scheduleInterval)
+        clearInterval(timeInterval)
+      }
+    } else {
+      // On weekend, just show the schedule without timers
+      const sundaySchedule = timetables[selectedClass]?.schedules[0] || []
+      setTodayClasses(sundaySchedule)
+      setCurrentClass(null)
+      setNextClass(null)
+      return () => clearInterval(timeInterval)
+    }
   }, [selectedClass])
 
   const updateSchedule = () => {
@@ -60,7 +86,7 @@ export default function ClassSchedule() {
     if (!currentClassFound) {
       setCurrentClass(null)
       setNextClass(todaySchedule[0])
-      setTimeInfo({ current: currentTime, elapsed: '', remaining: '', percentageRemaining: 100 })
+      setTimeInfo(prev => ({ ...prev, elapsed: '', remaining: '', percentageRemaining: 100 }))
 
       // Check if all classes for the day are finished
       if (todaySchedule.length > 0) {
@@ -115,7 +141,7 @@ export default function ClassSchedule() {
   }
 
   const getDayName = (day) => {
-    const days = ['','Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
     return days[day]
   }
 
@@ -145,16 +171,24 @@ export default function ClassSchedule() {
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div>
-            <p className="text-lg font-medium">
-              Current Class: {currentClass ? `${currentClass.subject} (${currentClass.room}, ${currentClass.teacher})` : 'None'}
-            </p>
-            <p className="text-lg font-medium">
-              Next Class: {nextClass ? `${nextClass.subject} (${nextClass.room}, ${nextClass.teacher})` : 'None'}
-            </p>
+            {isWeekend ? (
+              <p className="text-lg font-medium text-orange-500">
+                It's weekend! Timers will resume on Sunday.
+              </p>
+            ) : (
+              <>
+                <p className="text-lg font-medium">
+                  Current Class: {currentClass ? `${currentClass.subject} (${currentClass.room}, ${currentClass.teacher})` : 'None'}
+                </p>
+                <p className="text-lg font-medium">
+                  Next Class: {nextClass ? `${nextClass.subject} (${nextClass.room}, ${nextClass.teacher})` : 'None'}
+                </p>
+              </>
+            )}
           </div>
           <div>
             <p>Current Time: {timeInfo.current}</p>
-            {currentClass && (
+            {currentClass && !isWeekend && (
               <>
                 <p>Time Elapsed: {timeInfo.elapsed}</p>
                 <p>Time Remaining: {timeInfo.remaining}</p>
@@ -182,7 +216,7 @@ export default function ClassSchedule() {
             {todayClasses.map((classInfo, index) => (
               <TableRow 
                 key={index} 
-                className={currentClass?.subject === classInfo.subject ? 'bg-muted' : ''}
+                className={!isWeekend && currentClass?.subject === classInfo.subject ? 'bg-muted' : ''}
               >
                 <TableCell>{classInfo.start}</TableCell>
                 <TableCell>{classInfo.end}</TableCell>
