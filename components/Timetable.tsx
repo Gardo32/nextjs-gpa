@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -16,50 +16,39 @@ export default function ClassSchedule() {
   const [currentDay, setCurrentDay] = useState(0)
   const [isWeekend, setIsWeekend] = useState(false)
 
-  useEffect(() => {
-    const savedClass = localStorage.getItem('selectedClass')
-    if (savedClass) setSelectedClass(savedClass)
-    
-    const savedDay = localStorage.getItem('currentDay')
+  const moveToNextDay = useCallback(() => {
+    const nextDay = (currentDay + 1) % 5 // Cycle through 0 (Sunday) to 4 (Thursday)
+    setCurrentDay(nextDay)
+    localStorage.setItem('currentDay', nextDay.toString())
+  }, [currentDay])
+
+  const updateTimeInfo = useCallback((current) => {
+    if (!current) return
+
     const now = new Date()
-    const day = now.getDay()
-    
-    // Check if it's weekend (Friday or Saturday)
-    const weekend = day === 5 || day === 6
-    setIsWeekend(weekend)
-    
-    // Always show Sunday's schedule (0), but only set currentDay to saved day if it's not weekend
-    if (savedDay && !weekend) {
-      setCurrentDay(parseInt(savedDay))
-    } else {
-      setCurrentDay(0) // Show Sunday's schedule
-    }
+    const [startHour, startMin] = current.start.split(':')
+    const [endHour, endMin] = current.end.split(':')
 
-    // Set up time update interval regardless of weekend
-    const timeInterval = setInterval(() => {
-      const currentTime = new Date().toLocaleTimeString('en-US', { hour12: false })
-      setTimeInfo(prev => ({ ...prev, current: currentTime }))
-    }, 1000)
-    
-    // Only update class schedule if it's not weekend
-    if (!weekend) {
-      updateSchedule()
-      const scheduleInterval = setInterval(updateSchedule, 1000)
-      return () => {
-        clearInterval(scheduleInterval)
-        clearInterval(timeInterval)
-      }
-    } else {
-      // On weekend, just show the schedule without timers
-      const sundaySchedule = timetables[selectedClass]?.schedules[0] || []
-      setTodayClasses(sundaySchedule)
-      setCurrentClass(null)
-      setNextClass(null)
-      return () => clearInterval(timeInterval)
-    }
-  }, [selectedClass])
+    const startTime = new Date(now)
+    startTime.setHours(parseInt(startHour), parseInt(startMin), 0)
 
-  const updateSchedule = () => {
+    const endTime = new Date(now)
+    endTime.setHours(parseInt(endHour), parseInt(endMin), 0)
+
+    const elapsed = Math.max(0, Math.floor((now - startTime) / 1000))
+    const remaining = Math.max(0, Math.floor((endTime - now) / 1000))
+    const totalDuration = Math.floor((endTime - startTime) / 1000)
+    const percentageRemaining = Math.round((remaining / totalDuration) * 100)
+
+    setTimeInfo({
+      current: now.toLocaleTimeString('en-US', { hour12: false }),
+      elapsed: `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`,
+      remaining: `${Math.floor(remaining / 60)}m ${remaining % 60}s`,
+      percentageRemaining
+    })
+  }, [])
+
+  const updateSchedule = useCallback(() => {
     const now = new Date()
     const currentTime = now.toLocaleTimeString('en-US', { hour12: false }).slice(0, 5)
     
@@ -88,7 +77,6 @@ export default function ClassSchedule() {
       setNextClass(todaySchedule[0])
       setTimeInfo(prev => ({ ...prev, elapsed: '', remaining: '', percentageRemaining: 100 }))
 
-      // Check if all classes for the day are finished
       if (todaySchedule.length > 0) {
         const lastClass = todaySchedule[todaySchedule.length - 1]
         const [lastEndHour, lastEndMin] = lastClass.end.split(':')
@@ -99,39 +87,45 @@ export default function ClassSchedule() {
         }
       }
     }
-  }
+  }, [selectedClass, currentDay, moveToNextDay, updateTimeInfo])
 
-  const moveToNextDay = () => {
-    const nextDay = (currentDay + 1) % 5 // Cycle through 0 (Sunday) to 4 (Thursday)
-    setCurrentDay(nextDay)
-    localStorage.setItem('currentDay', nextDay.toString())
-  }
-
-  const updateTimeInfo = (current) => {
-    if (!current) return
-
+  useEffect(() => {
+    const savedClass = localStorage.getItem('selectedClass')
+    if (savedClass) setSelectedClass(savedClass)
+    
+    const savedDay = localStorage.getItem('currentDay')
     const now = new Date()
-    const [startHour, startMin] = current.start.split(':')
-    const [endHour, endMin] = current.end.split(':')
+    const day = now.getDay()
+    
+    const weekend = day === 5 || day === 6
+    setIsWeekend(weekend)
+    
+    if (savedDay && !weekend) {
+      setCurrentDay(parseInt(savedDay))
+    } else {
+      setCurrentDay(0)
+    }
 
-    const startTime = new Date(now)
-    startTime.setHours(parseInt(startHour), parseInt(startMin), 0)
-
-    const endTime = new Date(now)
-    endTime.setHours(parseInt(endHour), parseInt(endMin), 0)
-
-    const elapsed = Math.max(0, Math.floor((now - startTime) / 1000))
-    const remaining = Math.max(0, Math.floor((endTime - now) / 1000))
-    const totalDuration = Math.floor((endTime - startTime) / 1000)
-    const percentageRemaining = Math.round((remaining / totalDuration) * 100)
-
-    setTimeInfo({
-      current: now.toLocaleTimeString('en-US', { hour12: false }),
-      elapsed: `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`,
-      remaining: `${Math.floor(remaining / 60)}m ${remaining % 60}s`,
-      percentageRemaining
-    })
-  }
+    const timeInterval = setInterval(() => {
+      const currentTime = new Date().toLocaleTimeString('en-US', { hour12: false })
+      setTimeInfo(prev => ({ ...prev, current: currentTime }))
+    }, 1000)
+    
+    if (!weekend) {
+      updateSchedule()
+      const scheduleInterval = setInterval(updateSchedule, 1000)
+      return () => {
+        clearInterval(scheduleInterval)
+        clearInterval(timeInterval)
+      }
+    } else {
+      const sundaySchedule = timetables[selectedClass]?.schedules[0] || []
+      setTodayClasses(sundaySchedule)
+      setCurrentClass(null)
+      setNextClass(null)
+      return () => clearInterval(timeInterval)
+    }
+  }, [selectedClass, updateSchedule])
 
   const getProgressColor = (percentage) => {
     if (percentage > 50) return 'bg-green-500'
@@ -173,7 +167,7 @@ export default function ClassSchedule() {
           <div>
             {isWeekend ? (
               <p className="text-lg font-medium text-orange-500">
-                It's weekend! Timers will resume on Sunday.
+                It&apos;s weekend! Timers will resume on Sunday.
               </p>
             ) : (
               <>

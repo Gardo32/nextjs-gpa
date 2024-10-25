@@ -288,7 +288,16 @@ export default function PearsonTracker() {
                 key={assignment.id} 
                 className={`flex justify-between items-center p-4 border rounded-lg ${label === 'Expired' ? 'opacity-60' : ''}`}
               >
-                <div className="flex items-center space-x-2">
+                <div className="flex-1">
+                  <p className="font-medium text-lg">{assignment.name}</p>
+                  <p className={`text-sm ${className}`}>Due: {formattedDueDate}</p>
+                  <p className="text-sm text-purple-500">
+                    {gradeOptions.find(g => g.value === assignment.grade)?.label || 'No Grade'}
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-4">
+                  {/* Major Icons */}
                   <div className="flex space-x-1">
                     {assignmentMajors.map((major, index) => {
                       const Icon = major.icon;
@@ -297,17 +306,14 @@ export default function PearsonTracker() {
                       );
                     })}
                   </div>
-                  <div>
-                    <p className="font-medium text-lg">{assignment.name}</p>
-                    <p className={`text-sm ${className}`}>Due: {formattedDueDate}</p>
-                    <p className="text-sm text-purple-500">
-                      {gradeOptions.find(g => g.value === assignment.grade)?.label || 'No Grade'}
-                    </p>
+
+                  {/* Status */}
+                  <div className="flex items-center space-x-2">
+                    {icon}
+                    <p className={`font-medium ${className}`}>{label}</p>
                   </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  {icon}
-                  <p className={`font-medium ${className}`}>{label}</p>
+
+                  {/* Admin Controls */}
                   {isAuthorized && (
                     <div className="flex items-center space-x-2 ml-4">
                       <Button 
@@ -330,6 +336,7 @@ export default function PearsonTracker() {
           })}
         </div>
 
+        {/* Admin Section */}
         {isAuthorized ? (
           <div className="mt-6">
             <Dialog>
