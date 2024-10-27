@@ -12,9 +12,21 @@ export default function ClassSchedule() {
   const [currentClass, setCurrentClass] = useState(null)
   const [nextClass, setNextClass] = useState(null)
   const [todayClasses, setTodayClasses] = useState([])
-  const [timeInfo, setTimeInfo] = useState({ current: '', elapsed: '', remaining: '', percentageRemaining: 100 })
+  const [timeInfo, setTimeInfo] = useState({
+    current: '',
+    elapsed: '',
+    remaining: '',
+    percentageRemaining: 100
+  })
   const [currentDay, setCurrentDay] = useState(0)
   const [isWeekend, setIsWeekend] = useState(false)
+
+  // Helper function to format time
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    return `${minutes}m ${remainingSeconds}s`
+  }
 
   const updateTimeInfo = useCallback((current) => {
     if (!current) return
@@ -36,8 +48,8 @@ export default function ClassSchedule() {
 
     setTimeInfo({
       current: now.toLocaleTimeString('en-US', { hour12: false }),
-      elapsed: `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`,
-      remaining: `${Math.floor(remaining / 60)}m ${remaining % 60}s`,
+      elapsed: formatTime(elapsed),
+      remaining: formatTime(remaining),
       percentageRemaining
     })
   }, [])
@@ -61,7 +73,6 @@ export default function ClassSchedule() {
         setCurrentClass(classInfo)
         setNextClass(todaySchedule[i + 1] || null)
         currentClassFound = true
-        updateTimeInfo(classInfo)
         break
       }
     }
@@ -71,7 +82,7 @@ export default function ClassSchedule() {
       setNextClass(todaySchedule[0])
       setTimeInfo(prev => ({ ...prev, elapsed: '', remaining: '', percentageRemaining: 100 }))
     }
-  }, [selectedClass, currentDay, updateTimeInfo])
+  }, [selectedClass, currentDay])
 
   useEffect(() => {
     const savedClass = localStorage.getItem('selectedClass')
@@ -80,27 +91,35 @@ export default function ClassSchedule() {
     const now = new Date()
     const day = now.getDay()
     
-    // Consider Friday (5) and Saturday (6) as weekend
     const weekend = day === 5 || day === 6
     setIsWeekend(weekend)
     
-    // Always set to Sunday (0) on weekends, otherwise use the current day (0-4)
     const adjustedDay = weekend ? 0 : (day === 0 ? 0 : day - 1)
     setCurrentDay(adjustedDay)
 
-    const timeInterval = setInterval(() => {
-      const currentTime = new Date().toLocaleTimeString('en-US', { hour12: false })
-      setTimeInfo(prev => ({ ...prev, current: currentTime }))
+    // Update current time and timers every second
+    const timerInterval = setInterval(() => {
+      if (currentClass) {
+        updateTimeInfo(currentClass)
+      } else {
+        setTimeInfo(prev => ({
+          ...prev,
+          current: new Date().toLocaleTimeString('en-US', { hour12: false })
+        }))
+      }
     }, 1000)
     
+    // Check for schedule changes every second
+    const scheduleInterval = setInterval(updateSchedule, 1000)
+    
+    // Initial updates
     updateSchedule()
-    const scheduleInterval = setInterval(updateSchedule, 60000) // Update every minute
     
     return () => {
+      clearInterval(timerInterval)
       clearInterval(scheduleInterval)
-      clearInterval(timeInterval)
     }
-  }, [selectedClass, updateSchedule])
+  }, [selectedClass, updateSchedule, currentClass, updateTimeInfo])
 
   const getProgressColor = (percentage) => {
     if (percentage > 50) return 'bg-green-500'
@@ -113,11 +132,12 @@ export default function ClassSchedule() {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']
     return days[day]
   }
-
   return (
-    <Card className="w-full max-w-4xl">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Class Schedule - {getDayName(currentDay)}</CardTitle>
+    <Card className="w-full max-w-4xl mx-auto p-4">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardTitle className="text-2xl font-bold">
+          Class Schedule - {getDayName(currentDay)}
+        </CardTitle>
         <div className="flex items-center gap-4">
           <Select 
             value={selectedClass} 
@@ -138,64 +158,100 @@ export default function ClassSchedule() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="space-y-2">
             {isWeekend ? (
               <p className="text-lg font-medium text-orange-500">
                 It&apos;s weekend! Showing Sunday&apos;s schedule.
               </p>
             ) : (
               <>
-                <p className="text-lg font-medium">
-                  Current Class: {currentClass ? `${currentClass.subject} (${currentClass.room}, ${currentClass.teacher})` : 'None'}
-                </p>
-                <p className="text-lg font-medium">
-                  Next Class: {nextClass ? `${nextClass.subject} (${nextClass.room}, ${nextClass.teacher})` : 'None'}
-                </p>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Current Class</p>
+                  <p className="text-lg font-medium">
+                    {currentClass 
+                      ? `${currentClass.subject} (${currentClass.room}, ${currentClass.teacher})`
+                      : 'No class in session'}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Next Class</p>
+                  <p className="text-lg font-medium">
+                    {nextClass 
+                      ? `${nextClass.subject} (${nextClass.room}, ${nextClass.teacher})`
+                      : 'No more classes today'}
+                  </p>
+                </div>
               </>
             )}
           </div>
-          <div>
-            <p>Current Time: {timeInfo.current}</p>
+          <div className="space-y-2">
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Current Time</p>
+              <p className="text-lg font-medium">{timeInfo.current}</p>
+            </div>
             {currentClass && !isWeekend && (
               <>
-                <p>Time Elapsed: {timeInfo.elapsed}</p>
-                <p>Time Remaining: {timeInfo.remaining}</p>
-                <div className="mt-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Time Elapsed</p>
+                    <p className="text-lg font-medium">{timeInfo.elapsed}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Time Remaining</p>
+                    <p className="text-lg font-medium">{timeInfo.remaining}</p>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Progress</p>
                   <Progress 
                     value={timeInfo.percentageRemaining} 
-                    className={`h-2 ${getProgressColor(timeInfo.percentageRemaining)}`}
+                    className={`h-3 ${getProgressColor(timeInfo.percentageRemaining)}`}
                   />
                 </div>
               </>
             )}
           </div>
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Start</TableHead>
-              <TableHead>End</TableHead>
-              <TableHead>Subject</TableHead>
-              <TableHead>Teacher</TableHead>
-              <TableHead>Room</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {todayClasses.map((classInfo, index) => (
-              <TableRow 
-                key={index} 
-                className={!isWeekend && currentClass?.subject === classInfo.subject ? 'bg-muted' : ''}
-              >
-                <TableCell>{classInfo.start}</TableCell>
-                <TableCell>{classInfo.end}</TableCell>
-                <TableCell>{classInfo.subject}</TableCell>
-                <TableCell>{classInfo.teacher}</TableCell>
-                <TableCell>{classInfo.room}</TableCell>
+  
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[100px]">Start</TableHead>
+                <TableHead className="w-[100px]">End</TableHead>
+                <TableHead>Subject</TableHead>
+                <TableHead>Teacher</TableHead>
+                <TableHead className="w-[100px]">Room</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {todayClasses.map((classInfo, index) => (
+                <TableRow 
+                  key={index} 
+                  className={
+                    !isWeekend && currentClass?.subject === classInfo.subject 
+                      ? 'bg-muted' 
+                      : ''
+                  }
+                >
+                  <TableCell>{classInfo.start}</TableCell>
+                  <TableCell>{classInfo.end}</TableCell>
+                  <TableCell className="font-medium">{classInfo.subject}</TableCell>
+                  <TableCell>{classInfo.teacher}</TableCell>
+                  <TableCell>{classInfo.room}</TableCell>
+                </TableRow>
+              ))}
+              {todayClasses.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    No classes scheduled for today
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
     </Card>
   )
