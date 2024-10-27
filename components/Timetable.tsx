@@ -16,12 +16,6 @@ export default function ClassSchedule() {
   const [currentDay, setCurrentDay] = useState(0)
   const [isWeekend, setIsWeekend] = useState(false)
 
-  const moveToNextDay = useCallback(() => {
-    const nextDay = (currentDay + 1) % 5 // Cycle through 0 (Sunday) to 4 (Thursday)
-    setCurrentDay(nextDay)
-    localStorage.setItem('currentDay', nextDay.toString())
-  }, [currentDay])
-
   const updateTimeInfo = useCallback((current) => {
     if (!current) return
 
@@ -76,54 +70,35 @@ export default function ClassSchedule() {
       setCurrentClass(null)
       setNextClass(todaySchedule[0])
       setTimeInfo(prev => ({ ...prev, elapsed: '', remaining: '', percentageRemaining: 100 }))
-
-      if (todaySchedule.length > 0) {
-        const lastClass = todaySchedule[todaySchedule.length - 1]
-        const [lastEndHour, lastEndMin] = lastClass.end.split(':')
-        const lastEndTime = `${lastEndHour.padStart(2, '0')}:${lastEndMin.padStart(2, '0')}`
-        
-        if (currentTime >= lastEndTime) {
-          moveToNextDay()
-        }
-      }
     }
-  }, [selectedClass, currentDay, moveToNextDay, updateTimeInfo])
+  }, [selectedClass, currentDay, updateTimeInfo])
 
   useEffect(() => {
     const savedClass = localStorage.getItem('selectedClass')
     if (savedClass) setSelectedClass(savedClass)
     
-    const savedDay = localStorage.getItem('currentDay')
     const now = new Date()
     const day = now.getDay()
     
+    // Consider Friday (5) and Saturday (6) as weekend
     const weekend = day === 5 || day === 6
     setIsWeekend(weekend)
     
-    if (savedDay && !weekend) {
-      setCurrentDay(parseInt(savedDay))
-    } else {
-      setCurrentDay(0)
-    }
+    // Always set to Sunday (0) on weekends, otherwise use the current day (0-4)
+    const adjustedDay = weekend ? 0 : (day === 0 ? 0 : day - 1)
+    setCurrentDay(adjustedDay)
 
     const timeInterval = setInterval(() => {
       const currentTime = new Date().toLocaleTimeString('en-US', { hour12: false })
       setTimeInfo(prev => ({ ...prev, current: currentTime }))
     }, 1000)
     
-    if (!weekend) {
-      updateSchedule()
-      const scheduleInterval = setInterval(updateSchedule, 1000)
-      return () => {
-        clearInterval(scheduleInterval)
-        clearInterval(timeInterval)
-      }
-    } else {
-      const sundaySchedule = timetables[selectedClass]?.schedules[0] || []
-      setTodayClasses(sundaySchedule)
-      setCurrentClass(null)
-      setNextClass(null)
-      return () => clearInterval(timeInterval)
+    updateSchedule()
+    const scheduleInterval = setInterval(updateSchedule, 60000) // Update every minute
+    
+    return () => {
+      clearInterval(scheduleInterval)
+      clearInterval(timeInterval)
     }
   }, [selectedClass, updateSchedule])
 
@@ -135,7 +110,7 @@ export default function ClassSchedule() {
   }
 
   const getDayName = (day) => {
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']
     return days[day]
   }
 
@@ -167,7 +142,7 @@ export default function ClassSchedule() {
           <div>
             {isWeekend ? (
               <p className="text-lg font-medium text-orange-500">
-                It&apos;s weekend! Timers will resume on Sunday.
+                It&apos;s weekend! Showing Sunday&apos;s schedule.
               </p>
             ) : (
               <>
