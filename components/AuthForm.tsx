@@ -19,6 +19,14 @@ export default function AuthForm() {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
+
+    // Check if the email ends with @nvtc.edu.bh
+    if (!email.endsWith('@nvtc.edu.bh')) {
+      setError('Only @nvtc.edu.bh email addresses can sign up.')
+      setIsLoading(false)
+      return
+    }
+
     const { error } = await supabase.auth.signUp({ email, password })
     if (error) setError(error.message)
     else {
