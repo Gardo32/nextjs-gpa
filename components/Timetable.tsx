@@ -94,7 +94,7 @@ export default function ClassSchedule() {
     const weekend = day === 5 || day === 6
     setIsWeekend(weekend)
     
-    const adjustedDay = weekend ? 0 : (day === 0 ? 0 : day - 0)
+    const adjustedDay = weekend ? 0 : (day === 0 ? 0 : day)
     setCurrentDay(adjustedDay)
 
     // Update current time and timers every second
