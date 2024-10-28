@@ -14,19 +14,34 @@ export default function Dashboard() {
   const router = useRouter()
 
   useEffect(() => {
-    // Check active sessions and sets the user
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const checkSession = async () => {
+      // Check active sessions and sets the user
+      const { data: { session } } = await supabase.auth.getSession()
       setSession(session)
       setLoading(false)
+
       if (!session) {
         router.push('/auth')
+      } else {
+        // Check if user has selected a specialty
+        const nvNumber = session.user.email.split('@')[0]
+        const { data, error } = await supabase
+          .from('user_specialties')
+          .select('specialty')
+          .eq('nv_number', nvNumber)
+
+        if (error) {
+          console.error('Error fetching specialty:', error)
+        } else if (!data || data.length === 0) {
+          router.push('/select-specialty') // Redirect to specialty selection page
+        }
       }
-    })
+    }
+
+    checkSession()
 
     // Listen for changes on auth state (logged in, signed out, etc.)
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       if (!session) {
         router.push('/auth')
