@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
+  const [nvNumber, setNvNumber] = useState('') // State to hold nvNumber
 
   useEffect(() => {
     const checkSession = async () => {
@@ -23,8 +24,11 @@ export default function Dashboard() {
       if (!session) {
         router.push('/auth')
       } else {
-        // Check if user has selected a specialty
+        // Extract nvNumber from the session
         const nvNumber = session.user.email.split('@')[0]
+        setNvNumber(nvNumber); // Set nvNumber state
+
+        // Check if user has selected a specialty
         const { data, error } = await supabase
           .from('user_specialties')
           .select('specialty')
@@ -61,6 +65,7 @@ export default function Dashboard() {
 
   return (
     <div className="w-full max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">Hello {nvNumber} 👋</h1> {/* Greeting message */}
       <Tabs defaultValue="timetable" className="w-full">
         <TabsList className="grid w-full grid-cols-3"> {/* Adjust grid columns to 3 */}
           <TabsTrigger value="timetable">Timetable</TabsTrigger>

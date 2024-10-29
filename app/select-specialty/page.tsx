@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Toaster, toast } from 'react-hot-toast'
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select" // Assuming you have a Select component
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 
 const specialties = [
   { value: 'Cloud Computing', code: 'CCP' },
@@ -48,10 +48,10 @@ export default function SelectSpecialty() {
 
     const classString = `${grade}.${specialties.find(s => s.value === specialty)?.code}`
 
-    // Insert data into Supabase
+    // Insert data into Supabase with role
     const { error } = await supabase
       .from('user_specialties')
-      .insert([{ nv_number: nvNumber, grade, specialty, class: classString }])
+      .insert([{ nv_number: nvNumber, grade, specialty, class: classString, Role: 'user' }]) // Adding Role: 'user'
 
     if (error) {
       toast.error('Error uploading data: ' + error.message)
