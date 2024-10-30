@@ -24,9 +24,9 @@ export default function PearsonTracker() {
   const [gradeFilter, setGradeFilter] = useState('all');
 
   const majorOptions = [
-    { value: 'cloud', label: 'Cloud Computing', icon: Cloud, color: 'text-blue-500' },
+    { value: 'CCP', label: 'Cloud Computing', icon: Cloud, color: 'text-blue-500' },
     { value: 'AI', label: 'Artificial Intelligence', icon: Cpu, color: 'text-green-500' },
-    { value: 'cybersecurity', label: 'Cybersecurity', icon: Shield, color: 'text-red-500' }
+    { value: 'SEC', label: 'Cybersecurity', icon: Shield, color: 'text-red-500' }
   ];
 
   const gradeOptions = [
