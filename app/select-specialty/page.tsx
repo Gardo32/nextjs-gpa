@@ -17,28 +17,21 @@ const specialties = [
 ]
 
 export default function SelectSpecialty() {
-  const [email, setEmail] = useState('')
   const [specialty, setSpecialty] = useState('')
+  const [email, setEmail] = useState('') // Allowing manual email input
   const router = useRouter()
-
-  useEffect(() => {
-    // Check if user is logged in
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        router.push('/auth') // Redirect to auth if not logged in
-      } else {
-        setEmail(session.user.email) // Set email from session
-      }
-    }
-    checkSession()
-  }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Extract NV number from email (case insensitive)
-    const nvNumber = email.split('@')[0].toLowerCase()
+    // Validate email format
+    if (!email.endsWith('@nvtc.edu.bh')) {
+      toast.error('Please enter a valid email ending with @nvtc.edu.bh')
+      return
+    }
+
+    // Extract NV number from the manually entered email
+    const nvNumber = email.split('@')[0].toLowerCase() // Extract NV number from email
     const grade = nvNumber.startsWith('nv22') ? 12 : nvNumber.startsWith('nv23') ? 11 : nvNumber.startsWith('nv24') ? 10 : null
 
     if (!grade) {
@@ -76,7 +69,8 @@ export default function SelectSpecialty() {
                 type="email"
                 placeholder="Enter your email"
                 value={email}
-                readOnly
+                onChange={(e) => setEmail(e.target.value)} // Update state with user input
+                required
               />
             </div>
             <div className="space-y-2">

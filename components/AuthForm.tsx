@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useSession } from '@/app/SessionContext'
 
 export default function AuthForm() {
   const [email, setEmail] = useState('')
@@ -14,13 +15,37 @@ export default function AuthForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+  const supabase = createClientComponentClient()
+  const { session } = useSession()
+
+  useEffect(() => {
+    const checkAdminRole = async () => {
+      if (session) {
+        const nvNumber = session.user.email.split('@')[0]
+        const { data, error } = await supabase
+          .from('user_specialties')
+          .select('Role')
+          .eq('nv_number', nvNumber)
+          .single()
+
+        if (error) {
+          // Redirect to /select-specialty if fetching the role fails
+          router.push('/select-specialty')
+        } else if (data?.Role === 'admin') {
+          router.push('/admin')
+        } else {
+          router.push('/dashboard')
+        }
+      }
+    }
+    checkAdminRole()
+  }, [session, supabase, router])
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
 
-    // Check if the email ends with @nvtc.edu.bh
     if (!email.endsWith('@nvtc.edu.bh')) {
       setError('Only @nvtc.edu.bh email addresses can sign up.')
       setIsLoading(false)
@@ -39,10 +64,12 @@ export default function AuthForm() {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
+
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) setError(error.message)
-    else router.push('/dashboard')
-    setIsLoading(false)
+    if (error) {
+      setError(error.message)
+      setIsLoading(false)
+    }
   }
 
   return (

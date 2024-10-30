@@ -61,6 +61,7 @@ export default function PearsonTracker() {
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
+        setError('Failed to fetch user data');
       } finally {
         setLoading(false);
       }
@@ -70,67 +71,67 @@ export default function PearsonTracker() {
   }, [session, supabase]);
 
   useEffect(() => {
-    fetchAssignments()
-    const interval = setInterval(fetchAssignments, 60000)
-    return () => clearInterval(interval)
-  }, [])
+    fetchAssignments();
+    const interval = setInterval(fetchAssignments, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const checkPassword = () => {
-    const appPassword = process.env.NEXT_PUBLIC_APP_PASSWORD
+    const appPassword = process.env.NEXT_PUBLIC_APP_PASSWORD;
     if (password === appPassword) {
-      setIsAuthorized(true)
+      setIsAuthorized(true);
     } else {
-      alert('Incorrect password')
+      alert('Incorrect password');
     }
-  }
+  };
 
   const getAssignmentStatus = (dueDate) => {
-    const now = new Date()
-    const due = new Date(dueDate)
+    const now = new Date();
+    const due = new Date(dueDate);
     
     if (now > due) {
       return { 
         icon: <Clock className="text-gray-500 w-6 h-6" />, 
         label: 'Expired',
         className: 'text-gray-500'
-      }
+      };
     } else if ((due - now) > (7 * 24 * 60 * 60 * 1000)) {
       return { 
         icon: <CheckCircle className="text-green-500 w-6 h-6" />, 
         label: 'Safe',
         className: 'text-green-500'
-      }
+      };
     } else if ((due - now) > (2 * 24 * 60 * 60 * 1000)) {
       return { 
         icon: <AlertTriangle className="text-yellow-500 w-6 h-6" />, 
         label: 'Caution',
         className: 'text-yellow-500'
-      }
+      };
     } else {
       return { 
         icon: <XCircle className="text-red-500 w-6 h-6" />, 
         label: 'Danger',
         className: 'text-red-500'
-      }
+      };
     }
-  }
+  };
 
   const getMajorIcon = (major) => {
-    const option = majorOptions.find(opt => opt.value === major)
+    const option = majorOptions.find(opt => opt.value === major);
     if (option) {
-      const Icon = option.icon
-      return <Icon className={`w-6 h-6 ${option.color}`} />
+      const Icon = option.icon;
+      return <Icon className={`w-6 h-6 ${option.color}`} />;
     }
-    return null
-  }
+    return null;
+  };
 
   const getGradeIcon = (grade) => {
-    const option = gradeOptions.find(opt => opt.value === grade)
+    const option = gradeOptions.find(opt => opt.value === grade);
     if (option) {
-      return <option.icon className="w-6 h-6 text-purple-500" />
+      return <option.icon className="w-6 h-6 text-purple-500" />;
     }
-    return null
-  }
+    return null;
+  };
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString('en-US', {
@@ -140,12 +141,12 @@ export default function PearsonTracker() {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true
-    })
-  }
+    });
+  };
 
   const formatDateForInput = (dateString) => {
-    return new Date(dateString).toISOString().slice(0, 16)
-  }
+    return new Date(dateString).toISOString().slice(0, 16);
+  };
 
   const handleMajorToggle = (major) => {
     setSelectedMajors(prev => {
@@ -177,30 +178,31 @@ export default function PearsonTracker() {
       return majorOptions.map(option => ({
         icon: option.icon,
         color: option.color
-      }))
+      }));
     }
-    const option = majorOptions.find(opt => opt.value === assignment.major)
+    const option = majorOptions.find(opt => opt.value === assignment.major);
     return option ? [{
       icon: option.icon,
       color: option.color
-    }] : []
-  }
+    }] : [];
+  };
 
   const fetchAssignments = async () => {
     const { data, error } = await supabase
       .from('assignments')
       .select('*')
-      .order('due_date', { ascending: true })
+      .order('due_date', { ascending: true });
 
     if (error) {
-      console.error('Error fetching assignments:', error)
+      console.error('Error fetching assignments:', error);
+      setError('Failed to fetch assignments');
     } else {
-      setAssignments(data)
+      setAssignments(data);
     }
-  }
+  };
 
   const addAssignment = async () => {
-    const dueDateISO = new Date(newAssignment.dueDate).toISOString()
+    const dueDateISO = new Date(newAssignment.dueDate).toISOString();
 
     const { data, error } = await supabase
       .from('assignments')
@@ -209,28 +211,29 @@ export default function PearsonTracker() {
         due_date: dueDateISO, 
         major: newAssignment.major,
         grade: newAssignment.grade 
-      }])
+      }]);
 
     if (error) {
-      console.error('Error adding assignment:', error)
+      console.error('Error adding assignment:', error);
+      setError('Failed to add assignment');
     } else {
-      fetchAssignments()
-      setNewAssignment({ name: '', dueDate: '', major: '', grade: '' })
+      fetchAssignments();
+      setNewAssignment({ name: '', dueDate: '', major: '', grade: '' });
     }
-  }
+  };
 
   const startEditing = (assignment) => {
     setEditingAssignment({
       ...assignment,
       dueDate: formatDateForInput(assignment.due_date)
-    })
-    setIsEditDialogOpen(true)
-  }
+    });
+    setIsEditDialogOpen(true);
+  };
 
   const updateAssignment = async () => {
-    if (!editingAssignment) return
+    if (!editingAssignment) return;
 
-    const dueDateISO = new Date(editingAssignment.dueDate).toISOString()
+    const dueDateISO = new Date(editingAssignment.dueDate).toISOString();
 
     const { error } = await supabase
       .from('assignments')
@@ -240,36 +243,38 @@ export default function PearsonTracker() {
         major: editingAssignment.major,
         grade: editingAssignment.grade
       })
-      .eq('id', editingAssignment.id)
+      .eq('id', editingAssignment.id);
 
     if (error) {
-      console.error('Error updating assignment:', error)
+      console.error('Error updating assignment:', error);
+      setError('Failed to update assignment');
     } else {
-      fetchAssignments()
-      setEditingAssignment(null)
-      setIsEditDialogOpen(false)
+      fetchAssignments();
+      setEditingAssignment(null);
+      setIsEditDialogOpen(false);
     }
-  }
+  };
 
   const deleteAssignment = async (id) => {
     const { error } = await supabase
       .from('assignments')
       .delete()
-      .eq('id', id)
+      .eq('id', id);
 
     if (error) {
-      console.error('Error deleting assignment:', error)
+      console.error('Error deleting assignment:', error);
+      setError('Failed to delete assignment');
     } else {
-      fetchAssignments()
+      fetchAssignments();
     }
-  }
+  };
 
   if (loading) {
-    return <div>Loading...</div>
+    return <div>Loading...</div>;
   }
 
   if (error) {
-    return <div>{error}</div>
+    return <div className="text-red-500">{error}</div>;
   }
 
   return (
@@ -327,9 +332,10 @@ export default function PearsonTracker() {
         {/* Assignments List */}
         <div className="space-y-4">
           {getFilteredAssignments().map((assignment) => {
-            const { icon, label, className } = getAssignmentStatus(assignment.due_date)
-            const formattedDueDate = formatDate(assignment.due_date)
-            const assignmentMajors = getAssignmentMajors(assignment)
+            const { icon, label, className } = getAssignmentStatus(assignment.due_date);
+            const formattedDueDate = formatDate(assignment.due_date);
+            const assignmentMajors = getAssignmentMajors(assignment);
+            
             return (
               <div 
                 key={assignment.id} 
@@ -347,10 +353,10 @@ export default function PearsonTracker() {
                   {/* Major Icons */}
                   <div className="flex space-x-1">
                     {assignmentMajors.map((major, index) => {
-                      const Icon = major.icon
+                      const Icon = major.icon;
                       return (
                         <Icon key={index} className={`w-6 h-6 ${major.color}`} />
-                      )
+                      );
                     })}
                   </div>
 
@@ -359,57 +365,37 @@ export default function PearsonTracker() {
                     {icon}
                     <p className={`font-medium ${className}`}>{label}</p>
                   </div>
-
-                  {/* Admin Controls */}
-                  {isAuthorized && (
-                    <div className="flex items-center space-x-2 ml-4">
-                      <Button 
-                        variant="outline"
-                        onClick={() => startEditing(assignment)}
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        variant="outline"
-                        onClick={() => deleteAssignment(assignment.id)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  )}
+                  </div>
                 </div>
-              </div>
-            )
+            );
           })}
         </div>
 
-        {/* Admin Section */}
-        {isAuthorized ? (
-          <div className="mt-6">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button>Add New Assignment</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Enter Assignment Details</DialogTitle>
-                </DialogHeader>
-                
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Assignment</DialogTitle>
+            </DialogHeader>
+            {editingAssignment && (
+              <div className="space-y-4">
                 <Input
                   type="text"
                   placeholder="Assignment Name"
-                  value={newAssignment.name}
-                  onChange={(e) => setNewAssignment({ ...newAssignment, name: e.target.value })}
+                  value={editingAssignment.name}
+                  onChange={(e) => setEditingAssignment({ ...editingAssignment, name: e.target.value })}
+                  className="w-full"
                 />
                 <Input
                   type="datetime-local"
                   placeholder="Due Date"
-                  value={newAssignment.dueDate}
-                  onChange={(e) => setNewAssignment({ ...newAssignment, dueDate: e.target.value })}
+                  value={editingAssignment.dueDate}
+                  onChange={(e) => setEditingAssignment({ ...editingAssignment, dueDate: e.target.value })}
+                  className="w-full"
                 />
                 <select
-                  value={newAssignment.major}
-                  onChange={(e) => setNewAssignment({ ...newAssignment, major: e.target.value })}
+                  value={editingAssignment.major}
+                  onChange={(e) => setEditingAssignment({ ...editingAssignment, major: e.target.value })}
                   className="w-full p-2 rounded-lg border"
                 >
                   <option value="">Select Major</option>
@@ -421,8 +407,8 @@ export default function PearsonTracker() {
                   <option value="global">All Majors</option>
                 </select>
                 <select
-                  value={newAssignment.grade}
-                  onChange={(e) => setNewAssignment({ ...newAssignment, grade: e.target.value })}
+                  value={editingAssignment.grade}
+                  onChange={(e) => setEditingAssignment({ ...editingAssignment, grade: e.target.value })}
                   className="w-full p-2 rounded-lg border"
                 >
                   <option value="">Select Grade</option>
@@ -432,82 +418,22 @@ export default function PearsonTracker() {
                     </option>
                   ))}
                 </select>
-                <Button onClick={addAssignment}>
-                  Submit
-                </Button>
-              </DialogContent>
-            </Dialog>
-
-            {/* Edit Dialog */}
-            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Edit Assignment</DialogTitle>
-                </DialogHeader>
-                {editingAssignment && (
-                  <>
-                    <Input
-                      type="text"
-                      placeholder="Assignment Name"
-                      value={editingAssignment.name}
-                      onChange={(e) => setEditingAssignment({ ...editingAssignment, name: e.target.value })}
-                    />
-                    <Input
-                      type="datetime-local"
-                      placeholder="Due Date"
-                      value={editingAssignment.dueDate}
-                      onChange={(e) => setEditingAssignment({ ...editingAssignment, dueDate: e.target.value })}
-                    />
-                    <select
-                      value={editingAssignment.major}
-                      onChange={(e) => setEditingAssignment({ ...editingAssignment, major: e.target.value })}
-                      className="w-full p-2 rounded-lg border"
-                    >
-                      <option value="">Select Major</option>
-                      {majorOptions.map(major => (
-                        <option key={major.value} value={major.value}>
-                          {major.label}
-                        </option>
-                      ))}
-                      <option value="global">All Majors</option>
-                    </select>
-                    <select
-                      value={editingAssignment.grade}
-                      onChange={(e) => setEditingAssignment({ ...editingAssignment, grade: e.target.value })}
-                      className="w-full p-2 rounded-lg border"
-                    >
-                      <option value="">Select Grade</option>
-                      {gradeOptions.map(grade => (
-                        <option key={grade.value} value={grade.value}>
-                          {grade.label}
-                        </option>
-                      ))}
-                    </select>
-                    <Button onClick={updateAssignment}>
-                      Save Changes
-                    </Button>
-                  </>
-                )}
-              </DialogContent>
-            </Dialog>
-          </div>
-        ) : (
-          <div className="mt-6">
-            <h2 className="text-lg font-medium mb-2">Admin Login</h2>
-            <div className="flex items-center space-x-4">
-              <Input
-                type="password"
-                placeholder="Enter password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              <Button onClick={checkPassword}>
-                Submit
-              </Button>
-            </div>
-          </div>
-        )}
+                <div className="flex justify-end space-x-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsEditDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button onClick={updateAssignment}>
+                    Save Changes
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
-  )
+  );
 }

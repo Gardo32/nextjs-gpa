@@ -7,17 +7,34 @@ import { ModeToggle } from '@/components/mode-toggle'
 import { Toaster } from "@/components/ui/toaster"
 import Link from 'next/link'
 import { Button } from "@/components/ui/button"
-import { BookOpen, GraduationCap, FileSpreadsheet, Award, LogOut } from 'lucide-react'
+import { LogOut } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { SessionProvider, useSession } from './SessionContext'
+import { useEffect, useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 const inter = Inter({ subsets: ['latin'] })
 
 function Header() {
   const { session } = useSession()
+  const [isAdmin, setIsAdmin] = useState(false)
   const router = useRouter()
   const supabase = createClientComponentClient()
+
+  useEffect(() => {
+    if (session) {
+      const fetchUserRole = async () => {
+        const nvNumber = session.user.email.split('@')[0]
+        const { data } = await supabase
+          .from('user_specialties')
+          .select('Role')
+          .eq('nv_number', nvNumber)
+          .single()
+        setIsAdmin(data?.Role === 'admin')
+      }
+      fetchUserRole()
+    }
+  }, [session, supabase])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -29,14 +46,16 @@ function Header() {
       <div className="flex flex-wrap justify-between items-center gap-4">
         <h1 className="text-2xl font-bold">G12 Utils</h1>
         <div className="flex items-center space-x-2 sm:space-x-4">
+          {session && isAdmin && (
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/dashboard">Dashboard</Link>
+            </Button>
+          )}
           {session ? (
-            <>
-              {/* Existing buttons */}
-              <Button onClick={handleSignOut} variant="ghost" size="sm">
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </Button>
-            </>
+            <Button onClick={handleSignOut} variant="ghost" size="sm">
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
           ) : (
             <Button asChild variant="ghost" size="sm">
               <Link href="/auth">Sign In</Link>
