@@ -1,95 +1,136 @@
 'use client'
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CheckCircle, AlertTriangle, XCircle, Cloud, Cpu, Shield, Edit2, Clock, GraduationCap } from "lucide-react";
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { CheckCircle, AlertTriangle, XCircle, Cloud, Cpu, Shield, Edit2, Clock, GraduationCap } from "lucide-react"
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useSession } from '@/app/SessionContext'
 
 export default function PearsonTracker() {
-  const [password, setPassword] = useState('');
-  const [isAuthorized, setIsAuthorized] = useState(false);
-  const [newAssignment, setNewAssignment] = useState({ name: '', dueDate: '', major: '', grade: '' });
-  const [editingAssignment, setEditingAssignment] = useState(null);
-  const [assignments, setAssignments] = useState([]);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedMajors, setSelectedMajors] = useState([]);
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [gradeFilter, setGradeFilter] = useState('all');
+  const [password, setPassword] = useState('')
+  const [isAuthorized, setIsAuthorized] = useState(false)
+  const [newAssignment, setNewAssignment] = useState({ name: '', dueDate: '', major: '', grade: '' })
+  const [editingAssignment, setEditingAssignment] = useState(null)
+  const [assignments, setAssignments] = useState([])
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [selectedMajors, setSelectedMajors] = useState([])
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [gradeFilter, setGradeFilter] = useState('all')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const supabase = createClientComponentClient()
+  const { session } = useSession()
+
+  const specialties = [
+    { value: 'Cloud Computing', code: 'CCP' },
+    { value: 'Artificial Intelligence', code: 'AI' },
+    { value: 'Cyber Security', code: 'SEC' },
+  ]
 
   const majorOptions = [
-    { value: 'cloud', label: 'Cloud Computing', icon: Cloud, color: 'text-blue-500' },
-    { value: 'AI', label: 'Artificial Intelligence', icon: Cpu, color: 'text-green-500' },
-    { value: 'cybersecurity', label: 'Cybersecurity', icon: Shield, color: 'text-red-500' }
-  ];
+    { value: 'CCP', label: 'Cloud Computing', icon: Cloud, color: 'text-blue-500', userValue: 'Cloud Computing' },
+    { value: 'AI', label: 'Artificial Intelligence', icon: Cpu, color: 'text-green-500', userValue: 'Artificial Intelligence' },
+    { value: 'SEC', label: 'Cyber Security', icon: Shield, color: 'text-red-500', userValue: 'Cyber Security' }
+  ]
 
   const gradeOptions = [
     { value: 'grade12', label: 'Grade 12', icon: GraduationCap },
     { value: 'grade11', label: 'Grade 11', icon: GraduationCap }
-  ];
+  ]
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!session) return;
+      try {
+        const nvNumber = session.user.email.split('@')[0];
+        const { data, error } = await supabase
+          .from('user_specialties')
+          .select('specialty, grade')
+          .eq('nv_number', nvNumber)
+          .single();
+
+        if (error) throw error;
+        if (data) {
+          const userMajor = specialties.find(s => s.value === data.specialty)?.code;
+          setSelectedMajors(userMajor ? [userMajor] : []);
+          setGradeFilter(`grade${data.grade}`);
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [session, supabase]);
+
+  useEffect(() => {
+    fetchAssignments()
+    const interval = setInterval(fetchAssignments, 60000)
+    return () => clearInterval(interval)
+  }, [])
 
   const checkPassword = () => {
-    const appPassword = process.env.NEXT_PUBLIC_APP_PASSWORD;
+    const appPassword = process.env.NEXT_PUBLIC_APP_PASSWORD
     if (password === appPassword) {
-      setIsAuthorized(true);
+      setIsAuthorized(true)
     } else {
-      alert('Incorrect password');
+      alert('Incorrect password')
     }
-  };
+  }
 
   const getAssignmentStatus = (dueDate) => {
-    const now = new Date();
-    const due = new Date(dueDate);
+    const now = new Date()
+    const due = new Date(dueDate)
     
     if (now > due) {
       return { 
         icon: <Clock className="text-gray-500 w-6 h-6" />, 
         label: 'Expired',
         className: 'text-gray-500'
-      };
+      }
     } else if ((due - now) > (7 * 24 * 60 * 60 * 1000)) {
       return { 
         icon: <CheckCircle className="text-green-500 w-6 h-6" />, 
         label: 'Safe',
         className: 'text-green-500'
-      };
+      }
     } else if ((due - now) > (2 * 24 * 60 * 60 * 1000)) {
       return { 
         icon: <AlertTriangle className="text-yellow-500 w-6 h-6" />, 
         label: 'Caution',
         className: 'text-yellow-500'
-      };
+      }
     } else {
       return { 
         icon: <XCircle className="text-red-500 w-6 h-6" />, 
         label: 'Danger',
         className: 'text-red-500'
-      };
+      }
     }
-  };
+  }
 
   const getMajorIcon = (major) => {
-    const option = majorOptions.find(opt => opt.value === major);
+    const option = majorOptions.find(opt => opt.value === major)
     if (option) {
-      const Icon = option.icon;
-      return <Icon className={`w-6 h-6 ${option.color}`} />;
+      const Icon = option.icon
+      return <Icon className={`w-6 h-6 ${option.color}`} />
     }
-    return null;
-  };
+    return null
+  }
 
   const getGradeIcon = (grade) => {
-    const option = gradeOptions.find(opt => opt.value === grade);
+    const option = gradeOptions.find(opt => opt.value === grade)
     if (option) {
-      return <option.icon className="w-6 h-6 text-purple-500" />;
+      return <option.icon className="w-6 h-6 text-purple-500" />
     }
-    return null;
-  };
+    return null
+  }
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString('en-US', {
@@ -99,28 +140,32 @@ export default function PearsonTracker() {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true
-    });
-  };
+    })
+  }
 
   const formatDateForInput = (dateString) => {
-    return new Date(dateString).toISOString().slice(0, 16);
-  };
+    return new Date(dateString).toISOString().slice(0, 16)
+  }
 
   const handleMajorToggle = (major) => {
     setSelectedMajors(prev => {
-      if (prev.includes(major)) {
-        return prev.filter(m => m !== major);
+      const majorCode = specialties.find(s => s.value === major)?.code || major;
+      if (prev.includes(majorCode)) {
+        return prev.filter(m => m !== majorCode);
       } else {
-        return [...prev, major];
+        return [...prev, majorCode];
       }
     });
   };
 
   const getFilteredAssignments = () => {
+    if (selectedMajors.length === 0 && gradeFilter === 'all' && statusFilter === 'all') {
+      return assignments;
+    }
+    
     return assignments.filter(assignment => {
       const status = getAssignmentStatus(assignment.due_date).label;
-      const matchesMajor = selectedMajors.length === 0 || 
-        (assignment.major === 'global' || selectedMajors.includes(assignment.major));
+      const matchesMajor = selectedMajors.length === 0 || selectedMajors.includes(assignment.major) || assignment.major === 'global';
       const matchesStatus = statusFilter === 'all' || status === statusFilter;
       const matchesGrade = gradeFilter === 'all' || assignment.grade === gradeFilter;
       return matchesMajor && matchesStatus && matchesGrade;
@@ -132,30 +177,30 @@ export default function PearsonTracker() {
       return majorOptions.map(option => ({
         icon: option.icon,
         color: option.color
-      }));
+      }))
     }
-    const option = majorOptions.find(opt => opt.value === assignment.major);
+    const option = majorOptions.find(opt => opt.value === assignment.major)
     return option ? [{
       icon: option.icon,
       color: option.color
-    }] : [];
-  };
+    }] : []
+  }
 
   const fetchAssignments = async () => {
     const { data, error } = await supabase
       .from('assignments')
       .select('*')
-      .order('due_date', { ascending: true });
+      .order('due_date', { ascending: true })
 
     if (error) {
-      console.error('Error fetching assignments:', error);
+      console.error('Error fetching assignments:', error)
     } else {
-      setAssignments(data);
+      setAssignments(data)
     }
-  };
+  }
 
   const addAssignment = async () => {
-    const dueDateISO = new Date(newAssignment.dueDate).toISOString();
+    const dueDateISO = new Date(newAssignment.dueDate).toISOString()
 
     const { data, error } = await supabase
       .from('assignments')
@@ -164,28 +209,28 @@ export default function PearsonTracker() {
         due_date: dueDateISO, 
         major: newAssignment.major,
         grade: newAssignment.grade 
-      }]);
+      }])
 
     if (error) {
-      console.error('Error adding assignment:', error);
+      console.error('Error adding assignment:', error)
     } else {
-      fetchAssignments();
-      setNewAssignment({ name: '', dueDate: '', major: '', grade: '' });
+      fetchAssignments()
+      setNewAssignment({ name: '', dueDate: '', major: '', grade: '' })
     }
-  };
+  }
 
   const startEditing = (assignment) => {
     setEditingAssignment({
       ...assignment,
       dueDate: formatDateForInput(assignment.due_date)
-    });
-    setIsEditDialogOpen(true);
-  };
+    })
+    setIsEditDialogOpen(true)
+  }
 
   const updateAssignment = async () => {
-    if (!editingAssignment) return;
+    if (!editingAssignment) return
 
-    const dueDateISO = new Date(editingAssignment.dueDate).toISOString();
+    const dueDateISO = new Date(editingAssignment.dueDate).toISOString()
 
     const { error } = await supabase
       .from('assignments')
@@ -195,35 +240,37 @@ export default function PearsonTracker() {
         major: editingAssignment.major,
         grade: editingAssignment.grade
       })
-      .eq('id', editingAssignment.id);
+      .eq('id', editingAssignment.id)
 
     if (error) {
-      console.error('Error updating assignment:', error);
+      console.error('Error updating assignment:', error)
     } else {
-      fetchAssignments();
-      setEditingAssignment(null);
-      setIsEditDialogOpen(false);
+      fetchAssignments()
+      setEditingAssignment(null)
+      setIsEditDialogOpen(false)
     }
-  };
+  }
 
   const deleteAssignment = async (id) => {
     const { error } = await supabase
       .from('assignments')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
 
     if (error) {
-      console.error('Error deleting assignment:', error);
+      console.error('Error deleting assignment:', error)
     } else {
-      fetchAssignments();
+      fetchAssignments()
     }
-  };
+  }
 
-  useEffect(() => {
-    fetchAssignments();
-    const interval = setInterval(fetchAssignments, 60000);
-    return () => clearInterval(interval);
-  }, []);
+  if (loading) {
+    return <div>Loading...</div>
+  }
+
+  if (error) {
+    return <div>{error}</div>
+  }
 
   return (
     <Card className="w-full max-w-4xl mx-auto">
@@ -237,7 +284,7 @@ export default function PearsonTracker() {
             {majorOptions.map(major => (
               <Button
                 key={major.value}
-                onClick={() => handleMajorToggle(major.value)}
+                onClick={() => handleMajorToggle(major.userValue)}
                 variant={selectedMajors.includes(major.value) ? "default" : "outline"}
                 className={`flex items-center space-x-2 ${
                   selectedMajors.includes(major.value) 
@@ -280,9 +327,9 @@ export default function PearsonTracker() {
         {/* Assignments List */}
         <div className="space-y-4">
           {getFilteredAssignments().map((assignment) => {
-            const { icon, label, className } = getAssignmentStatus(assignment.due_date);
-            const formattedDueDate = formatDate(assignment.due_date);
-            const assignmentMajors = getAssignmentMajors(assignment);
+            const { icon, label, className } = getAssignmentStatus(assignment.due_date)
+            const formattedDueDate = formatDate(assignment.due_date)
+            const assignmentMajors = getAssignmentMajors(assignment)
             return (
               <div 
                 key={assignment.id} 
@@ -300,10 +347,10 @@ export default function PearsonTracker() {
                   {/* Major Icons */}
                   <div className="flex space-x-1">
                     {assignmentMajors.map((major, index) => {
-                      const Icon = major.icon;
+                      const Icon = major.icon
                       return (
                         <Icon key={index} className={`w-6 h-6 ${major.color}`} />
-                      );
+                      )
                     })}
                   </div>
 
@@ -332,7 +379,7 @@ export default function PearsonTracker() {
                   )}
                 </div>
               </div>
-            );
+            )
           })}
         </div>
 
@@ -347,6 +394,7 @@ export default function PearsonTracker() {
                 <DialogHeader>
                   <DialogTitle>Enter Assignment Details</DialogTitle>
                 </DialogHeader>
+                
                 <Input
                   type="text"
                   placeholder="Assignment Name"
@@ -461,5 +509,5 @@ export default function PearsonTracker() {
         )}
       </CardContent>
     </Card>
-  );
+  )
 }
