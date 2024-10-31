@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useSession } from '@/app/SessionContext'
 import AssignmentManager from '@/components/AssignmentManager'
+import UserManager from '@/components/UserManager'
 
 export default function AdminPage() {
   const [loading, setLoading] = useState(true)
@@ -74,8 +75,7 @@ export default function AdminPage() {
             <AssignmentManager />
           </TabsContent>
           <TabsContent value="users">
-            <h2 className="text-xl font-semibold mb-4">User Management</h2>
-            <p>User management features will be implemented here.</p>
+            <UserManager />
           </TabsContent>
           <TabsContent value="settings">
             <h2 className="text-xl font-semibold mb-4">Admin Settings</h2>
