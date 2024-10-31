@@ -7,60 +7,45 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import GPACalculator from '@/components/GPACalculator';
 import Timetable from '@/components/Timetable';
 import Pearson from '@/components/Pearson'; // Import Pearson Tracker
+import { useSession } from '@/app/SessionContext'; // Import useSession
 
 export default function Dashboard() {
-  const [session, setSession] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const router = useRouter()
-  const [nvNumber, setNvNumber] = useState('') // State to hold nvNumber
+  const { session, loading: sessionLoading } = useSession(); // Use session from SessionContext
+  const [nvNumber, setNvNumber] = useState(''); // State to hold nvNumber
+  const router = useRouter();
 
   useEffect(() => {
     const checkSession = async () => {
-      // Check active sessions and sets the user
-      const { data: { session } } = await supabase.auth.getSession()
-      setSession(session)
-      setLoading(false)
-
       if (!session) {
-        router.push('/auth')
+        router.push('/auth');
       } else {
         // Extract nvNumber from the session
-        const nvNumber = session.user.email.split('@')[0]
+        const nvNumber = session.user.email.split('@')[0];
         setNvNumber(nvNumber); // Set nvNumber state
 
         // Check if user has selected a specialty
         const { data, error } = await supabase
           .from('user_specialties')
           .select('specialty')
-          .eq('nv_number', nvNumber)
+          .eq('nv_number', nvNumber);
 
         if (error) {
-          console.error('Error fetching specialty:', error)
+          console.error('Error fetching specialty:', error);
         } else if (!data || data.length === 0) {
-          router.push('/select-specialty') // Redirect to specialty selection page
+          router.push('/select-specialty'); // Redirect to specialty selection page
         }
       }
-    }
+    };
 
-    checkSession()
+    checkSession();
+  }, [session, router]);
 
-    // Listen for changes on auth state (logged in, signed out, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-      if (!session) {
-        router.push('/auth')
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [router])
-
-  if (loading) {
-    return <div>Loading...</div>
+  if (sessionLoading) {
+    return <div>Loading...</div>;
   }
 
   if (!session) {
-    return null // Prevent content flash before redirect
+    return null; // Prevent content flash before redirect
   }
 
   return (
@@ -78,8 +63,8 @@ export default function Dashboard() {
         <TabsContent value="gpa" className="mt-6 flex justify-center">
           <GPACalculator />
         </TabsContent>
-        <TabsContent value="pearson" className="mt-6"> {/* Add Pearson Tracker content */}
-          <Pearson />
+        <TabsContent value="pearson" className="mt-6"> {/* Pass session to Pearson Tracker */}
+          <Pearson session={session} />
         </TabsContent>
       </Tabs>
     </div>
