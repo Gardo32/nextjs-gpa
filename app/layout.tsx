@@ -1,5 +1,4 @@
 'use client'
-
 import './globals.css'
 import { Inter } from 'next/font/google'
 import { ThemeProvider } from '@/components/theme-provider'
@@ -7,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster"
 import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 import { LogOut } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { SessionProvider, useSession } from './SessionContext'
 import { useEffect, useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
@@ -19,6 +18,7 @@ function Header() {
   const { session } = useSession()
   const [isAdmin, setIsAdmin] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
   const supabase = createClientComponentClient()
 
   useEffect(() => {
@@ -41,16 +41,30 @@ function Header() {
     router.push('/auth')
   }
 
+  const renderAdminButton = () => {
+    if (!session || !isAdmin) return null
+    
+    if (pathname === '/dashboard') {
+      return (
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/admin">Admin</Link>
+        </Button>
+      )
+    }
+    
+    return (
+      <Button asChild variant="ghost" size="sm">
+        <Link href="/dashboard">Dashboard</Link>
+      </Button>
+    )
+  }
+
   return (
     <header className="container mx-auto py-4 px-4 sm:px-6 lg:px-8">
       <div className="flex flex-wrap justify-between items-center gap-4">
         <h1 className="text-2xl font-bold">G12 Utils</h1>
         <div className="flex items-center space-x-2 sm:space-x-4">
-          {session && isAdmin && (
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/dashboard">Dashboard</Link>
-            </Button>
-          )}
+          {renderAdminButton()}
           {session ? (
             <Button onClick={handleSignOut} variant="ghost" size="sm">
               <LogOut className="h-4 w-4 mr-2" />
