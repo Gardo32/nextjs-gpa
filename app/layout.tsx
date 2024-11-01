@@ -3,7 +3,6 @@
 import './globals.css'
 import { Inter } from 'next/font/google'
 import { ThemeProvider } from '@/components/theme-provider'
-import { ModeToggle } from '@/components/mode-toggle'
 import { Toaster } from "@/components/ui/toaster"
 import Link from 'next/link'
 import { Button } from "@/components/ui/button"
@@ -12,6 +11,7 @@ import { useRouter } from 'next/navigation'
 import { SessionProvider, useSession } from './SessionContext'
 import { useEffect, useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { Settings } from '@/components/Settings'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -61,7 +61,7 @@ function Header() {
               <Link href="/auth">Sign In</Link>
             </Button>
           )}
-          <ModeToggle />
+          <Settings />
         </div>
       </div>
     </header>
