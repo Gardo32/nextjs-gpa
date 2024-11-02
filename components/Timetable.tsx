@@ -111,13 +111,14 @@ export default function ClassSchedule() {
         if (error) {
           console.error('Error fetching class:', error)
           setError('Failed to fetch your class information. Please try again later.')
+          setLoading(false)
         } else if (data) {
           setSelectedClass(data.class)
+          setLoading(false)
         } else {
           setError('No class information found. Please contact support.')
+          setLoading(false)
         }
-
-        setLoading(false)
       } catch (error) {
         console.error('Error fetching class:', error)
         setError('Failed to fetch class information. Please try again later.')

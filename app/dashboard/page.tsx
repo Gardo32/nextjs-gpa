@@ -2,60 +2,61 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import GPACalculator from '@/components/GPACalculator';
-import Timetable from '@/components/Timetable';
-import Pearson from '@/components/Pearson'; // Import Pearson Tracker
-import { useSession } from '@/app/SessionContext'; // Import useSession
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import GPACalculator from '@/components/GPACalculator'
+import Timetable from '@/components/Timetable'
+import Pearson from '@/components/Pearson'
+import QuizAssignmentCalendar from '@/components/QuizAssignmentCalendar'
+import { useSession } from '@/app/SessionContext'
 
 export default function Dashboard() {
-  const { session, loading: sessionLoading } = useSession(); // Use session from SessionContext
-  const [nvNumber, setNvNumber] = useState(''); // State to hold nvNumber
-  const router = useRouter();
+  const { session, loading: sessionLoading } = useSession()
+  const [nvNumber, setNvNumber] = useState('')
+  const router = useRouter()
+  const supabase = createClientComponentClient()
 
   useEffect(() => {
     const checkSession = async () => {
       if (!session) {
-        router.push('/auth');
+        router.push('/auth')
       } else {
-        // Extract nvNumber from the session
-        const nvNumber = session.user.email.split('@')[0];
-        setNvNumber(nvNumber); // Set nvNumber state
+        const nvNumber = session.user.email.split('@')[0]
+        setNvNumber(nvNumber)
 
-        // Check if user has selected a specialty
         const { data, error } = await supabase
           .from('user_specialties')
           .select('specialty')
-          .eq('nv_number', nvNumber);
+          .eq('nv_number', nvNumber)
 
         if (error) {
-          console.error('Error fetching specialty:', error);
+          console.error('Error fetching specialty:', error)
         } else if (!data || data.length === 0) {
-          router.push('/select-specialty'); // Redirect to specialty selection page
+          router.push('/select-specialty')
         }
       }
-    };
+    }
 
-    checkSession();
-  }, [session, router]);
+    checkSession()
+  }, [session, router, supabase])
 
   if (sessionLoading) {
-    return <div>Loading...</div>;
+    return <div>Loading...</div>
   }
 
   if (!session) {
-    return null; // Prevent content flash before redirect
+    return null
   }
 
   return (
     <div className="w-full max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Hello {nvNumber} 👋</h1> {/* Greeting message */}
+      <h1 className="text-2xl font-bold mb-4">Hello {nvNumber} 👋</h1>
       <Tabs defaultValue="timetable" className="w-full">
-        <TabsList className="grid w-full grid-cols-3"> {/* Adjust grid columns to 3 */}
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="timetable">Timetable</TabsTrigger>
           <TabsTrigger value="gpa">GPA Calculator</TabsTrigger>
-          <TabsTrigger value="pearson">Pearson Tracker</TabsTrigger> {/* Add Pearson Tracker tab */}
+          <TabsTrigger value="pearson">Pearson Tracker</TabsTrigger>
+          <TabsTrigger value="calendar">Quiz & Assignment Calendar</TabsTrigger>
         </TabsList>
         <TabsContent value="timetable" className="mt-6">
           <Timetable />
@@ -63,8 +64,11 @@ export default function Dashboard() {
         <TabsContent value="gpa" className="mt-6 flex justify-center">
           <GPACalculator />
         </TabsContent>
-        <TabsContent value="pearson" className="mt-6"> {/* Pass session to Pearson Tracker */}
+        <TabsContent value="pearson" className="mt-6">
           <Pearson session={session} />
+        </TabsContent>
+        <TabsContent value="calendar" className="mt-6">
+          <QuizAssignmentCalendar />
         </TabsContent>
       </Tabs>
     </div>
