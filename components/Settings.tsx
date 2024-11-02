@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { useRouter } from 'next/navigation'
 
 const specialties = [
   { value: 'Cloud Computing', code: 'CCP' },
@@ -20,11 +22,16 @@ const specialties = [
 
 export function Settings() {
   const [isOpen, setIsOpen] = useState(false)
+  const [isPasswordResetOpen, setIsPasswordResetOpen] = useState(false)
   const [specialty, setSpecialty] = useState('')
   const [fontSize, setFontSize] = useState('medium')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const { theme, setTheme } = useTheme()
   const { session } = useSession()
   const supabase = createClientComponentClient()
+  const router = useRouter()
 
   useEffect(() => {
     if (session) {
@@ -92,6 +99,84 @@ export function Settings() {
     document.documentElement.style.fontSize = size === 'small' ? '14px' : size === 'large' ? '18px' : '16px'
   }
 
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      console.error('Error signing out:', error)
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive",
+      })
+    } else {
+      router.push('/login') // Adjust this path according to your login route
+    }
+  }
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (newPassword.length < 6) {
+      toast({
+        title: "Error",
+        description: "New password must be at least 6 characters",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "New passwords do not match",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      })
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Success",
+        description: "Password updated successfully. Please log in again.",
+      })
+
+      // Reset form and close dialog
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      setIsPasswordResetOpen(false)
+
+      // Sign out the user
+      await handleLogout()
+
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "An error occurred while resetting password",
+        variant: "destructive",
+      })
+      console.error('Password reset error:', err)
+    }
+  }
+
+  const openPasswordReset = () => {
+    setIsOpen(false)
+    setIsPasswordResetOpen(true)
+  }
+
   return (
     <>
       <Button
@@ -103,6 +188,7 @@ export function Settings() {
         <SettingsIcon className="h-[1.2rem] w-[1.2rem]" />
         <span className="sr-only">Open settings</span>
       </Button>
+      
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -163,9 +249,56 @@ export function Settings() {
                     </SelectContent>
                   </Select>
                 </div>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={openPasswordReset}
+                >
+                  Reset Password
+                </Button>
               </TabsContent>
             )}
           </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isPasswordResetOpen} onOpenChange={setIsPasswordResetOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handlePasswordReset} className="space-y-4">
+            <div>
+              <Label className="block mb-2">Current Password</Label>
+              <Input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label className="block mb-2">New Password</Label>
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label className="block mb-2">Confirm New Password</Label>
+              <Input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+            </div>
+            <Button type="submit" className="w-full">
+              Reset Password
+            </Button>
+          </form>
         </DialogContent>
       </Dialog>
     </>

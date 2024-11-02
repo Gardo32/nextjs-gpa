@@ -69,7 +69,7 @@ export default function AdminPage() {
           <TabsList>
             <TabsTrigger value="assignments">Assignments</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsTrigger value="settings">Quizzes</TabsTrigger>
           </TabsList>
           <TabsContent value="assignments">
             <AssignmentManager />
@@ -78,8 +78,8 @@ export default function AdminPage() {
             <UserManager />
           </TabsContent>
           <TabsContent value="settings">
-            <h2 className="text-xl font-semibold mb-4">Admin Settings</h2>
-            <p>Admin settings and configurations will be available here.</p>
+            <h2 className="text-xl font-semibold mb-4">Quizzes Panel</h2>
+            <p>Quizzes Panel and configurations will be available here.</p>
           </TabsContent>
         </Tabs>
       </CardContent>
