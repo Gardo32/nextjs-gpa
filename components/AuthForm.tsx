@@ -71,7 +71,7 @@ export default function AuthForm() {
       setIsLoading(false)
     }
   }
-A
+
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
