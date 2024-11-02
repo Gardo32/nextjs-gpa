@@ -71,7 +71,7 @@ export default function AuthForm() {
       setIsLoading(false)
     }
   }
-
+A
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
@@ -95,7 +95,7 @@ export default function AuthForm() {
             <Input
               id="password"
               type="password"
-              placeholder="Password"
+              placeholder="Default: NVTC@1234"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
