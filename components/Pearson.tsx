@@ -1,38 +1,80 @@
 'use client'
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CheckCircle, AlertTriangle, XCircle, Cloud, Cpu, Shield, Edit2, Clock, GraduationCap } from "lucide-react";
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { CheckCircle, AlertTriangle, XCircle, Cloud, Cpu, Shield, Edit2, Clock, GraduationCap } from "lucide-react"
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useSession } from '@/app/SessionContext'
 
 export default function PearsonTracker() {
-  const [password, setPassword] = useState('');
-  const [isAuthorized, setIsAuthorized] = useState(false);
-  const [newAssignment, setNewAssignment] = useState({ name: '', dueDate: '', major: '', grade: '' });
-  const [editingAssignment, setEditingAssignment] = useState(null);
-  const [assignments, setAssignments] = useState([]);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedMajors, setSelectedMajors] = useState([]);
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [gradeFilter, setGradeFilter] = useState('all');
+  const [password, setPassword] = useState('')
+  const [isAuthorized, setIsAuthorized] = useState(false)
+  const [newAssignment, setNewAssignment] = useState({ name: '', dueDate: '', major: '', grade: '' })
+  const [editingAssignment, setEditingAssignment] = useState(null)
+  const [assignments, setAssignments] = useState([])
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [selectedMajors, setSelectedMajors] = useState([])
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [gradeFilter, setGradeFilter] = useState('all')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const supabase = createClientComponentClient()
+  const { session } = useSession()
+
+  const specialties = [
+    { value: 'Cloud Computing', code: 'CCP' },
+    { value: 'Artificial Intelligence', code: 'AI' },
+    { value: 'Cyber Security', code: 'SEC' },
+  ]
 
   const majorOptions = [
-    { value: 'CCP', label: 'Cloud Computing', icon: Cloud, color: 'text-blue-500' },
-    { value: 'AI', label: 'Artificial Intelligence', icon: Cpu, color: 'text-green-500' },
-    { value: 'SEC', label: 'Cybersecurity', icon: Shield, color: 'text-red-500' }
-  ];
+    { value: 'CCP', label: 'Cloud Computing', icon: Cloud, color: 'text-blue-500', userValue: 'Cloud Computing' },
+    { value: 'AI', label: 'Artificial Intelligence', icon: Cpu, color: 'text-green-500', userValue: 'Artificial Intelligence' },
+    { value: 'SEC', label: 'Cyber Security', icon: Shield, color: 'text-red-500', userValue: 'Cyber Security' }
+  ]
 
   const gradeOptions = [
     { value: 'grade12', label: 'Grade 12', icon: GraduationCap },
     { value: 'grade11', label: 'Grade 11', icon: GraduationCap }
-  ];
+  ]
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!session) return;
+      try {
+        const nvNumber = session.user.email.split('@')[0];
+        const { data, error } = await supabase
+          .from('user_specialties')
+          .select('specialty, grade')
+          .eq('nv_number', nvNumber)
+          .single();
+
+        if (error) throw error;
+        if (data) {
+          const userMajor = specialties.find(s => s.value === data.specialty)?.code;
+          setSelectedMajors(userMajor ? [userMajor] : []);
+          setGradeFilter(`grade${data.grade}`);
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+        setError('Failed to fetch user data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [session, supabase]);
+
+  useEffect(() => {
+    fetchAssignments();
+    const interval = setInterval(fetchAssignments, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const checkPassword = () => {
     const appPassword = process.env.NEXT_PUBLIC_APP_PASSWORD;
@@ -108,19 +150,23 @@ export default function PearsonTracker() {
 
   const handleMajorToggle = (major) => {
     setSelectedMajors(prev => {
-      if (prev.includes(major)) {
-        return prev.filter(m => m !== major);
+      const majorCode = specialties.find(s => s.value === major)?.code || major;
+      if (prev.includes(majorCode)) {
+        return prev.filter(m => m !== majorCode);
       } else {
-        return [...prev, major];
+        return [...prev, majorCode];
       }
     });
   };
 
   const getFilteredAssignments = () => {
+    if (selectedMajors.length === 0 && gradeFilter === 'all' && statusFilter === 'all') {
+      return assignments;
+    }
+    
     return assignments.filter(assignment => {
       const status = getAssignmentStatus(assignment.due_date).label;
-      const matchesMajor = selectedMajors.length === 0 || 
-        (assignment.major === 'global' || selectedMajors.includes(assignment.major));
+      const matchesMajor = selectedMajors.length === 0 || selectedMajors.includes(assignment.major) || assignment.major === 'global';
       const matchesStatus = statusFilter === 'all' || status === statusFilter;
       const matchesGrade = gradeFilter === 'all' || assignment.grade === gradeFilter;
       return matchesMajor && matchesStatus && matchesGrade;
@@ -149,6 +195,7 @@ export default function PearsonTracker() {
 
     if (error) {
       console.error('Error fetching assignments:', error);
+      setError('Failed to fetch assignments');
     } else {
       setAssignments(data);
     }
@@ -168,6 +215,7 @@ export default function PearsonTracker() {
 
     if (error) {
       console.error('Error adding assignment:', error);
+      setError('Failed to add assignment');
     } else {
       fetchAssignments();
       setNewAssignment({ name: '', dueDate: '', major: '', grade: '' });
@@ -199,6 +247,7 @@ export default function PearsonTracker() {
 
     if (error) {
       console.error('Error updating assignment:', error);
+      setError('Failed to update assignment');
     } else {
       fetchAssignments();
       setEditingAssignment(null);
@@ -214,16 +263,19 @@ export default function PearsonTracker() {
 
     if (error) {
       console.error('Error deleting assignment:', error);
+      setError('Failed to delete assignment');
     } else {
       fetchAssignments();
     }
   };
 
-  useEffect(() => {
-    fetchAssignments();
-    const interval = setInterval(fetchAssignments, 60000);
-    return () => clearInterval(interval);
-  }, []);
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div className="text-red-500">{error}</div>;
+  }
 
   return (
     <Card className="w-full max-w-4xl mx-auto">
@@ -237,7 +289,7 @@ export default function PearsonTracker() {
             {majorOptions.map(major => (
               <Button
                 key={major.value}
-                onClick={() => handleMajorToggle(major.value)}
+                onClick={() => handleMajorToggle(major.userValue)}
                 variant={selectedMajors.includes(major.value) ? "default" : "outline"}
                 className={`flex items-center space-x-2 ${
                   selectedMajors.includes(major.value) 
@@ -283,6 +335,7 @@ export default function PearsonTracker() {
             const { icon, label, className } = getAssignmentStatus(assignment.due_date);
             const formattedDueDate = formatDate(assignment.due_date);
             const assignmentMajors = getAssignmentMajors(assignment);
+            
             return (
               <div 
                 key={assignment.id} 
@@ -312,56 +365,37 @@ export default function PearsonTracker() {
                     {icon}
                     <p className={`font-medium ${className}`}>{label}</p>
                   </div>
-
-                  {/* Admin Controls */}
-                  {isAuthorized && (
-                    <div className="flex items-center space-x-2 ml-4">
-                      <Button 
-                        variant="outline"
-                        onClick={() => startEditing(assignment)}
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        variant="outline"
-                        onClick={() => deleteAssignment(assignment.id)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  )}
+                  </div>
                 </div>
-              </div>
             );
           })}
         </div>
 
-        {/* Admin Section */}
-        {isAuthorized ? (
-          <div className="mt-6">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button>Add New Assignment</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Enter Assignment Details</DialogTitle>
-                </DialogHeader>
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Assignment</DialogTitle>
+            </DialogHeader>
+            {editingAssignment && (
+              <div className="space-y-4">
                 <Input
                   type="text"
                   placeholder="Assignment Name"
-                  value={newAssignment.name}
-                  onChange={(e) => setNewAssignment({ ...newAssignment, name: e.target.value })}
+                  value={editingAssignment.name}
+                  onChange={(e) => setEditingAssignment({ ...editingAssignment, name: e.target.value })}
+                  className="w-full"
                 />
                 <Input
                   type="datetime-local"
                   placeholder="Due Date"
-                  value={newAssignment.dueDate}
-                  onChange={(e) => setNewAssignment({ ...newAssignment, dueDate: e.target.value })}
+                  value={editingAssignment.dueDate}
+                  onChange={(e) => setEditingAssignment({ ...editingAssignment, dueDate: e.target.value })}
+                  className="w-full"
                 />
                 <select
-                  value={newAssignment.major}
-                  onChange={(e) => setNewAssignment({ ...newAssignment, major: e.target.value })}
+                  value={editingAssignment.major}
+                  onChange={(e) => setEditingAssignment({ ...editingAssignment, major: e.target.value })}
                   className="w-full p-2 rounded-lg border"
                 >
                   <option value="">Select Major</option>
@@ -373,8 +407,8 @@ export default function PearsonTracker() {
                   <option value="global">All Majors</option>
                 </select>
                 <select
-                  value={newAssignment.grade}
-                  onChange={(e) => setNewAssignment({ ...newAssignment, grade: e.target.value })}
+                  value={editingAssignment.grade}
+                  onChange={(e) => setEditingAssignment({ ...editingAssignment, grade: e.target.value })}
                   className="w-full p-2 rounded-lg border"
                 >
                   <option value="">Select Grade</option>
@@ -384,81 +418,21 @@ export default function PearsonTracker() {
                     </option>
                   ))}
                 </select>
-                <Button onClick={addAssignment}>
-                  Submit
-                </Button>
-              </DialogContent>
-            </Dialog>
-
-            {/* Edit Dialog */}
-            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Edit Assignment</DialogTitle>
-                </DialogHeader>
-                {editingAssignment && (
-                  <>
-                    <Input
-                      type="text"
-                      placeholder="Assignment Name"
-                      value={editingAssignment.name}
-                      onChange={(e) => setEditingAssignment({ ...editingAssignment, name: e.target.value })}
-                    />
-                    <Input
-                      type="datetime-local"
-                      placeholder="Due Date"
-                      value={editingAssignment.dueDate}
-                      onChange={(e) => setEditingAssignment({ ...editingAssignment, dueDate: e.target.value })}
-                    />
-                    <select
-                      value={editingAssignment.major}
-                      onChange={(e) => setEditingAssignment({ ...editingAssignment, major: e.target.value })}
-                      className="w-full p-2 rounded-lg border"
-                    >
-                      <option value="">Select Major</option>
-                      {majorOptions.map(major => (
-                        <option key={major.value} value={major.value}>
-                          {major.label}
-                        </option>
-                      ))}
-                      <option value="global">All Majors</option>
-                    </select>
-                    <select
-                      value={editingAssignment.grade}
-                      onChange={(e) => setEditingAssignment({ ...editingAssignment, grade: e.target.value })}
-                      className="w-full p-2 rounded-lg border"
-                    >
-                      <option value="">Select Grade</option>
-                      {gradeOptions.map(grade => (
-                        <option key={grade.value} value={grade.value}>
-                          {grade.label}
-                        </option>
-                      ))}
-                    </select>
-                    <Button onClick={updateAssignment}>
-                      Save Changes
-                    </Button>
-                  </>
-                )}
-              </DialogContent>
-            </Dialog>
-          </div>
-        ) : (
-          <div className="mt-6">
-            <h2 className="text-lg font-medium mb-2">Admin Login</h2>
-            <div className="flex items-center space-x-4">
-              <Input
-                type="password"
-                placeholder="Enter password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              <Button onClick={checkPassword}>
-                Submit
-              </Button>
-            </div>
-          </div>
-        )}
+                <div className="flex justify-end space-x-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsEditDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button onClick={updateAssignment}>
+                    Save Changes
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
